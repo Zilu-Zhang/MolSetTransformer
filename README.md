@@ -82,7 +82,8 @@ MolSetTransformer/
 │   ├── mol_set_transformer.py  # Core Set Transformer model
 │   ├── attention_modules.py    # Attention mechanism implementations
 │   ├── train_engine.py         # Training loop and strategies
-│   └── inference_engine.py     # Prediction and evaluation
+│   ├── inference_engine.py     # Prediction and evaluation
+│   └── chemeleon_mp.pt         # Preloaded checkpoint file
 └── results/                     # Output directory (auto-generated)
 ```
 
