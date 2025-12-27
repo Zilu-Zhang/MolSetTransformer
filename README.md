@@ -20,8 +20,8 @@ MolSetTransformer is designed for scenarios where predictions depend on **sets o
 - **Pre-computed Features** - Support for HDF5-formatted custom embeddings
 
 ### 🔬 Set Transformer Architecture
-- **Self-Attention Blocks (SAB)** - Capture inter-molecular interactions
-- **Pooling Multihead Attention (PMA)** - Aggregate variable-sized sets into fixed representations
+- **Self-Attention Simulator** - Capture inter-molecular interactions
+- **Cross-Attention Integrator** - Aggregate variable-sized sets into fixed representations
 - **Dynamic Prediction Heads** - Task-specific heads for multi-task learning
 
 ### 📊 Training Strategies
@@ -104,7 +104,7 @@ CCO;CC(=O)O,0.85
 c1ccccc1;CCN(CC)CC,1.23
 ```
 
-### Dictionary File (Optional)
+### Dictionary File
 
 For ID-to-SMILES mapping: 
 ```csv
@@ -112,73 +112,6 @@ id,smiles
 Mol_001,CCO
 Mol_002,c1ccccc1
 ```
-
-## ⚙️ Configuration
-
-### Example JSON Configuration
-
-```json
-{
-  "project_name": "MyMolecularProject",
-  "mode": "application",
-  "task":  {
-    "type":  "regression",
-    "sub_type": "standard"
-  },
-  "data":  {
-    "train_path": "data/train.csv",
-    "test_path": "data/test.csv",
-    "mol_col": "Molecular_Composition",
-    "label_col": "Label",
-    "featurization": {
-      "feature_pipeline": ["morgan"]
-    }
-  },
-  "model_architecture": {
-    "model_dim": 256,
-    "nhead": 8,
-    "num_attention_blocks": 4,
-    "num_integrators": 6,
-    "dropouts": {
-      "input": 0.1,
-      "transformer": 0.1,
-      "head": 0.2
-    },
-    "random_seed": 42
-  },
-  "training": {
-    "strategy": "standard",
-    "epochs": 100,
-    "batch_size": 32,
-    "learning_rate": 0.001
-  }
-}
-```
-
-## 🏗️ Architecture Details
-
-### Model Pipeline
-
-```
-Input Molecules → Featurization → [B, M, D]
-                                      ↓
-                            Input Projection
-                                      ↓
-                         Self-Attention Blocks (SAB)
-                             (Inter-molecular learning)
-                                      ↓
-                         Pooling Attention (PMA)
-                             (Fixed-size aggregation)
-                                      ↓
-                           Prediction Head(s)
-                                      ↓
-                                  Output
-```
-
-### Attention Mechanisms
-
-- **MoleculeSimulator (SAB)**: Self-attention for modeling interactions between molecules in a set
-- **CrossIntegration (PMA)**: Cross-attention pooling with learnable seed vectors for set aggregation
 
 ## 📤 Outputs
 
@@ -203,8 +136,8 @@ results/MyProject/
 | `classification` | `binary` | 0 or 1 | Yes/No predictions |
 | `classification` | `multiclass` | Class index | Mutually exclusive categories |
 | `multilabel` | `classification` | Multi-hot vector | Multiple concurrent labels |
-| `multitask` | `regression` | Multiple heads | Structure-based task separation |
-| `multitask` | `binary classification` | Multiple heads | Structure-based task separation |
+| `multitask` | `regression` | Continuous value | Multiple Output heads |
+| `multitask` | `classification` | 0 or 1 | Multiple Output heads  |
 
 ## 📚 Dependencies
 
