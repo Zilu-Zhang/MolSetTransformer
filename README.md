@@ -203,7 +203,7 @@ results/MyProject/
 | `classification` | `binary` | 0 or 1 | Yes/No predictions |
 | `classification` | `multiclass` | Class index | Mutually exclusive categories |
 | `multilabel` | - | Multi-hot vector | Multiple concurrent labels |
-| `multitask` | - | Multiple heads | Structure-based task separation |
+| `multitask` | `regression, binary classification` | Multiple heads | Structure-based task separation |
 
 ## 📚 Dependencies
 
@@ -215,32 +215,3 @@ results/MyProject/
 - RDKit
 - h5py
 - tqdm
-
-### Optional
-- `descriptastorus` - For RDKit descriptor generation
-- `chemprop` - For CheMeleon graph embeddings
-
-## 📖 Citation
-
-If you use MolSetTransformer in your research, please cite: 
-
-```bibtex
-@software{molsettransformer,
-  author = {Zhang, Zilu},
-  title = {MolSetTransformer: Set Transformer for Molecular Property Prediction},
-  year = {2025},
-  url = {https://github.com/Zilu-Zhang/MolSetTransformer}
-}
-```
-
-## 📝 License
-
-This project is open source.  Please check the repository for license details.
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit issues and pull requests. 
-
----
-
-**Built with ❤️ for computational chemistry and drug discovery**
