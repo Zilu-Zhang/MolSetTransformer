@@ -202,8 +202,9 @@ results/MyProject/
 | `regression` | `standard` | Continuous value | Property prediction |
 | `classification` | `binary` | 0 or 1 | Yes/No predictions |
 | `classification` | `multiclass` | Class index | Mutually exclusive categories |
-| `multilabel` | - | Multi-hot vector | Multiple concurrent labels |
-| `multitask` | `regression, binary classification` | Multiple heads | Structure-based task separation |
+| `multilabel` | `classification` | Multi-hot vector | Multiple concurrent labels |
+| `multitask` | `regression` | Multiple heads | Structure-based task separation |
+| `multitask` | `binary classification` | Multiple heads | Structure-based task separation |
 
 ## 📚 Dependencies
 
