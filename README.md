@@ -35,21 +35,54 @@ MolSetTransformer is designed for scenarios where predictions depend on **sets o
 - **Batch Evaluation** - Efficient cross-validation workflows
 
 ## 🚀 Quick Start
-
 ### Installation
 
-```bash
-# Clone the repository
-git clone https://github.com/Zilu-Zhang/MolSetTransformer. git
-cd MolSetTransformer
+1. First, clone the repository so you have the project files and example configs:
 
-# Install dependencies
+```bash
+git clone https://github.com/Zilu-Zhang/MolSetTransformer.git
+cd MolSetTransformer
+```
+
+2. You can set up the environment in two ways: pip-only (quick) or conda (recommended).
+
+#### Option A — pip-only (quick)
+
+This uses pip to install required packages. Useful when you already have a Python environment.
+
+```bash
+# Install core dependencies
 pip install torch numpy pandas rdkit h5py tqdm
 
-# Optional: For additional featurization methods
+# Optional: additional featurizers (may require build tools)
 pip install descriptastorus  # RDKit descriptors
 pip install chemprop         # CheMeleon embeddings
 ```
+
+#### Option B — conda (recommended)
+
+Conda gives a reproducible environment and installs RDKit easily.
+
+1) CPU-only environment:
+
+```bash
+# from the repo root (where environment.yml is located)
+conda env create -f environment.yml
+conda activate molsettransformer
+```
+
+2) GPU environment (NVIDIA GPU; example using CUDA 11.8):
+
+```bash
+# from the repo root (where environment.cuda.yml is located)
+conda env create -f environment.cuda.yml
+conda activate molsettransformer-gpu
+```
+
+Notes:
+- The YAML files install optional featurizers (`descriptastorus`, `chemprop`) via pip. Remove them from the `pip:` list if you don't need these.
+- If you want different Python or CUDA versions, edit the YAML files to pin versions you prefer.
+- On some platforms, installing `chemprop` may require extra build tools. If you encounter issues, create the conda environment first (without `chemprop`) and install `chemprop` later with pip.
 
 ### Basic Usage
 
