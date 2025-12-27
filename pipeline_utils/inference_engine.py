@@ -1,24 +1,29 @@
 #!/usr/bin/env python3
+"""
+InferenceEngine Module
+======================
+
+Handles model inference, uncertainty estimation via MC Dropout, and 
+attention score extraction.
+"""
+
 import logging
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
-from pathlib import Path
 
 class InferenceEngine:
     """
-    Handles model inference, uncertainty estimation (MC Dropout), and attention export.
-    Supports Multi-Task, Multi-Label, and Standard Classification/Regression tasks.
+    Manages inference workflows, including:
+    - Loading checkpoints
+    - MC Dropout for uncertainty
+    - Exporting predictions and attention maps
+    - Merging results with original metadata
     """
     def __init__(self, model_config: dict, predictions_dir: Path, task_config: dict, label_map: dict = None):
-        """
-        Args:
-            model_config: Configuration dictionary for model parameters (e.g., MC dropout iterations).
-            predictions_dir: Directory where output CSVs and attention maps will be saved.
-            task_config: Configuration dictionary defining task type (classification, regression, etc.).
-            label_map: Optional dictionary mapping indices to human-readable label names.
-        """
         self.config = model_config or {}
         self.predictions_dir = Path(predictions_dir)
         self.predictions_dir.mkdir(parents=True, exist_ok=True)
@@ -30,43 +35,28 @@ class InferenceEngine:
         
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.task_config = task_config
-        
-        # Inverse map for decoding (Index -> "Label Name")
         self.idx_to_label = {v: k for k, v in label_map.items()} if label_map else None
 
     def _load_checkpoint(self, model: torch.nn.Module, checkpoint_path: str):
-        """Loads model weights, handling potential DataParallel prefix issues."""
         if not checkpoint_path: return model
         logging.info(f"Loading checkpoint: {checkpoint_path}")
-        
         cp = torch.load(checkpoint_path, map_location=self.device)
         state = cp['state_dict'] if (isinstance(cp, dict) and 'state_dict' in cp) else cp
-        
         try:
             model.load_state_dict(state)
         except RuntimeError:
-            # Handle state dicts saved with 'module.' prefix (from DataParallel)
+            # Handle DataParallel state dicts if necessary
             new_state = {k.replace("module.", ""): v for k, v in state.items()}
             model.load_state_dict(new_state)
         return model
 
     def _enable_dropout(self, model: torch.nn.Module):
-        """Forces Dropout layers to remain active during inference for MC Uncertainty estimation."""
+        """Forces Dropout layers to train mode for MC Uncertainty estimation."""
         model.eval()
         for m in model.modules():
-            if isinstance(m, nn.Dropout):
-                m.train()
+            if isinstance(m, nn.Dropout): m.train()
 
     def run(self, model: torch.nn.Module, best_model_path: str, test_loader, task_id: str):
-        """
-        Executes the inference loop.
-        
-        Args:
-            model: The neural network model.
-            best_model_path: Path to the saved model weights.
-            test_loader: DataLoader for the test set.
-            task_id: Identifier for the current task (used for naming outputs).
-        """
         logging.info(f"Starting inference for task: {task_id}")
         
         if best_model_path and Path(best_model_path).exists():
@@ -86,9 +76,7 @@ class InferenceEngine:
                 feats = batch['features'].to(self.device)
                 sample_ids = batch['sample_ids']
                 
-                # --- Dynamic Head Routing ---
-                # Determine which model head to use based on input dimensionality.
-                # Note: Assumes input is batched by length (e.g., via LengthGroupedBatchSampler).
+                # Determine head based on input length
                 max_m = feats.shape[1]
                 struct_key = f"{max_m}_mol" 
                 
@@ -96,34 +84,21 @@ class InferenceEngine:
                 t_type = self.task_config.get('type')
 
                 if t_type == 'multitask':
-                    # Structure-Based Multi-Task: Input length dictates the specific head.
-                    if struct_key in available_heads:
+                    if struct_key in available_heads: 
                         target_heads.append(struct_key)
-                    else:
-                        raise ValueError(
-                            f"[Inference Error] Input sample contains {max_m} molecules, "
-                            f"but the model was only trained for tasks: {available_heads}. "
-                            "In Multi-Task mode, input length must match a trained task head."
-                        )
+                    else: 
+                        raise ValueError(f"Input len {max_m} not supported by heads {available_heads}")
                 else:
-                    # Standard / Multi-Label / Single Task: Use default or available head.
-                    if 'default' in available_heads:
-                        target_heads.append('default')
-                    elif available_heads:
-                        target_heads.append(available_heads[0])
-                    else:
-                         raise RuntimeError("No model heads found. Model structure is invalid.")
+                    target_heads.append(available_heads[0] if available_heads else 'default')
 
                 for head_key in target_heads:
-                    # Enable MC Dropout if configured, otherwise standard evaluation
+                    # MC Dropout Logic
                     if self.mc_iterations > 1: self._enable_dropout(model)
                     else: model.eval()
 
                     logits_stack = []
-                    
-                    # --- MC Dropout Loop ---
                     for mc_i in range(self.mc_iterations):
-                        # Only export attention for the first iteration and limited samples
+                        # Only save attention for the first MC pass to save space
                         should_save_attn = (self.export_attention and mc_i == 0 and len(attn_collected) < MAX_ATTN_SAMPLES)
                         
                         out = model(feats, head_key, return_attention=should_save_attn)
@@ -131,9 +106,9 @@ class InferenceEngine:
                         if isinstance(out, tuple):
                             pred, attn = out
                             if should_save_attn and attn:
-                                current_batch_size = len(sample_ids)
-                                for k in range(current_batch_size):
+                                for k in range(len(sample_ids)):
                                     if len(attn_collected) >= MAX_ATTN_SAMPLES: break
+                                    # Handle tuple vs list attention outputs
                                     sample_attn = [layer_att[k].cpu().numpy() for layer_att in attn] if isinstance(attn, list) else attn[k].cpu().numpy()
                                     attn_collected.append({ "sample_id": sample_ids[k], "attention": sample_attn })
                         else: 
@@ -141,83 +116,56 @@ class InferenceEngine:
                         
                         logits_stack.append(pred.cpu().numpy())
 
-                    # --- Result Aggregation ---
-                    # Shape: (MC_Iter, Batch_Size, Output_Dim)
-                    logits_stack = np.stack(logits_stack, axis=0)
-                    
-                    logits_mean = np.mean(logits_stack, axis=0)
-                    logits_std = np.std(logits_stack, axis=0)
-                    
-                    t_type = self.task_config.get('type')
-                    sub_type = self.task_config.get('sub_type')
+                    # Aggregate Predictions
+                    logits_mean = np.mean(np.stack(logits_stack, axis=0), axis=0)
+                    logits_std = np.std(np.stack(logits_stack, axis=0), axis=0)
 
+                    # Post-process logits into readable format
                     for i in range(logits_mean.shape[0]):
                         row = {"sample_id": sample_ids[i] if sample_ids else None}
                         
-                        # --- Output Decoding Logic ---
-                        
-                        # 1. Multi-Label Classification
                         if t_type == 'multilabel':
                             probs = 1.0 / (1.0 + np.exp(-logits_mean[i]))
-                            active_indices = np.where(probs > 0.5)[0]
-                            decoded_labels = []
-                            for idx in active_indices:
-                                if self.idx_to_label and idx in self.idx_to_label:
-                                    decoded_labels.append(str(self.idx_to_label[idx]))
-                                else:
-                                    decoded_labels.append(str(idx))
-                            
-                            row["Predicted_Labels"] = "; ".join(decoded_labels)
+                            active = np.where(probs > 0.5)[0]
+                            labels = [str(self.idx_to_label[x]) if self.idx_to_label else str(x) for x in active]
+                            row["Predicted_Labels"] = "; ".join(labels)
                             row["All_Probabilities"] = "; ".join([f"{p:.4f}" for p in probs])
-                            if self.mc_iterations > 1:
+                            if self.mc_iterations > 1: 
                                 row["Uncertainty_Avg"] = np.mean(logits_std[i])
 
-                        # 2. Multi-Class Classification (Softmax)
-                        elif t_type == 'classification' and sub_type == 'multiclass':
-                            raw_logits = logits_mean[i]
-                            # Stable Softmax
-                            exp_logits = np.exp(raw_logits - np.max(raw_logits))
-                            probs = exp_logits / exp_logits.sum()
-                            
-                            pred_idx = np.argmax(probs)
-                            row["Predicted_Class_Index"] = pred_idx
-                            if self.idx_to_label and pred_idx in self.idx_to_label:
-                                row["Predicted_Class"] = self.idx_to_label[pred_idx]
-                            else:
-                                row["Predicted_Class"] = pred_idx
-                                
-                            row["Max_Probability"] = probs[pred_idx]
-                            row["All_Probabilities"] = "; ".join([f"{p:.4f}" for p in probs])
+                        elif t_type == 'classification' and self.task_config.get('sub_type') == 'multiclass':
+                            probs = np.exp(logits_mean[i] - np.max(logits_mean[i]))
+                            probs /= probs.sum()
+                            idx = np.argmax(probs)
+                            row["Predicted_Class"] = self.idx_to_label[idx] if self.idx_to_label else idx
+                            row["Max_Probability"] = probs[idx]
 
-                        # 3. Standard Regression / Binary Classification
                         else:
                             val = float(logits_mean[i].item())
-                            
-                            if t_type == 'classification' or (sub_type == 'binary'):
+                            if t_type == 'classification' or (self.task_config.get('sub_type') == 'binary'):
                                 prob = 1.0 / (1.0 + np.exp(-val))
                                 row["Prediction_Probability"] = prob
                                 row["Predicted_Class"] = 1 if prob > 0.5 else 0
                             else:
                                 row["Prediction"] = val
                             
-                            if self.mc_iterations > 1:
+                            if self.mc_iterations > 1: 
                                 row["Uncertainty"] = float(logits_std[i].item())
 
                         rows.append(row)
 
         pred_df = pd.DataFrame(rows)
         
-        # --- Merge Predictions with Original Metadata ---
+        # --- Merge and Clean ---
         if not pred_df.empty and 'sample_id' in pred_df.columns:
             pred_df.set_index('sample_id', inplace=True)
-            
             if hasattr(test_loader.dataset, 'data'):
                 original_df = test_loader.dataset.data.copy()
                 final_df = original_df.join(pred_df, how='left')
                 
-                cols_to_drop = ['features', 'label_processed']
-                for c in cols_to_drop:
-                    if c in final_df.columns: final_df.drop(columns=[c], inplace=True)
+                # Clean internal pipeline columns while keeping metadata
+                cols_to_drop = ['features', 'label_processed', 'smiles_list'] 
+                final_df.drop(columns=[c for c in cols_to_drop if c in final_df.columns], inplace=True)
             else:
                 final_df = pred_df
         else:
@@ -227,10 +175,8 @@ class InferenceEngine:
         final_df.to_csv(out_csv)
         logging.info(f"Saved merged predictions to {out_csv}")
 
-        # --- Export Attention Maps ---
+        # --- Export Attention ---
         if attn_collected:
-            attn_path = self.attn_dir / f"{task_id}_attention_top{MAX_ATTN_SAMPLES}.npz"
-            save_dict = {}
-            for i, item in enumerate(attn_collected):
-                save_dict[f"id_{item['sample_id']}"] = item['attention']
+            attn_path = self.attn_dir / f"{task_id}_attention.npz"
+            save_dict = {f"id_{item['sample_id']}": item['attention'] for item in attn_collected}
             np.savez_compressed(attn_path, **save_dict)
