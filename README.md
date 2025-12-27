@@ -13,13 +13,13 @@ MolSetTransformer is designed for scenarios where predictions depend on **sets o
 
 ## ✨ Key Features
 
-### 🧬 Flexible Molecular Featurization
+### ⚙️ Flexible Molecular Featurization
 - **Morgan Fingerprints** - Circular fingerprints for molecular structure encoding
 - **RDKit Descriptors** - Physicochemical property descriptors (requires `descriptastorus`)
 - **CheMeleon Embeddings** - Graph neural network embeddings (requires `chemprop`)
 - **Pre-computed Features** - Support for HDF5-formatted custom embeddings
 
-### 🔬 Set Transformer Architecture
+### 🤖 Set Transformer Architecture
 - **Self-Attention Simulator** - Capture inter-molecular interactions
 - **Cross-Attention Integrator** - Aggregate variable-sized sets into fixed representations
 - **Dynamic Prediction Heads** - Task-specific heads for multi-task learning
