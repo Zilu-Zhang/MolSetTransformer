@@ -66,9 +66,31 @@ class InferenceEngine:
                 struct_key = f"{max_m}_mol" 
                 
                 target_heads = []
-                if struct_key in available_heads: target_heads.append(struct_key)
-                elif 'default' in available_heads: target_heads.append('default')
-                elif available_heads: target_heads.append(available_heads[0])
+                t_type = self.task_config.get('type')
+
+                # --- STRICT LOGIC IMPLEMENTATION ---
+                if t_type == 'multitask':
+                    # Case A: Structure-Based Multi-Task
+                    # STRICT: The input length MUST match a specific trained head.
+                    if struct_key in available_heads:
+                        target_heads.append(struct_key)
+                    else:
+                        # Stop immediately if the model doesn't know this physics
+                        raise ValueError(
+                            f"[Strict Inference] Input sample contains {max_m} molecules, "
+                            f"but the model was only trained for these tasks: {available_heads}. "
+                            "In Multi-Task mode, input length must match a trained task head."
+                        )
+                else:
+                    # Case B: Standard / Multi-Label / Single Task
+                    # FLEXIBLE: Length doesn't dictate the task; use the shared head.
+                    if 'default' in available_heads:
+                        target_heads.append('default')
+                    elif available_heads:
+                        # Fallback to the single existing head (common in single-task models)
+                        target_heads.append(available_heads[0])
+                    else:
+                         raise RuntimeError("No model heads found. Model structure is invalid.")
 
                 for head_key in target_heads:
                     if self.mc_iterations > 1: self._enable_dropout(model)

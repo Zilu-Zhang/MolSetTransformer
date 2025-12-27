@@ -112,8 +112,85 @@ class DataManager:
         return df_merged
 
     def validate_data_coverage(self, train_path: str, test_path: str):
-        # (Simplified coverage check - relies on prepare_data logic)
-        pass 
+        """
+        Validates schema integrity and Dictionary coverage.
+        Fails early if columns are missing or dictionary mapping is critically low.
+        Uses dynamically configured column names from self.config.
+        """
+        logging.info("--- Starting Pre-flight Data Validation ---")
+        
+        # Dynamically retrieve column names from config
+        mol_col = self.config.get('mol_col', 'Molecular_Composition')
+        label_col = self.config.get('label_col', 'Label')
+        
+        logging.info(f"Validating against configured columns -> Molecule: '{mol_col}', Label: '{label_col}'")
+
+        # 1. Load Data for Inspection
+        try:
+            df_train = self._load_csv_safe(train_path)
+            df_test = self._load_csv_safe(test_path)
+        except Exception as e:
+            raise RuntimeError(f"Data Validation Failed: Could not load files. {e}")
+
+        # 2. Schema Integrity Check
+        for split_name, df in [("Train", df_train), ("Test", df_test)]:
+            # Check Column Existence (Dynamic)
+            missing_cols = [c for c in [mol_col, label_col] if c not in df.columns]
+            if missing_cols:
+                raise ValueError(f"[{split_name}] Critical columns missing: {missing_cols}. Found in CSV: {list(df.columns)}")
+            
+            # Check for Empty Data (Dynamic)
+            if df[mol_col].dropna().empty:
+                raise ValueError(f"[{split_name}] Molecule column '{mol_col}' is entirely empty or null.")
+            if df[label_col].dropna().empty:
+                raise ValueError(f"[{split_name}] Label column '{label_col}' is entirely empty or null.")
+
+        # 3. Dictionary Coverage Check (If enabled)
+        dict_path = self.config.get('dictionary_path')
+        if dict_path:
+            p_dict = Path(dict_path)
+            if not p_dict.exists():
+                raise FileNotFoundError(f"Dictionary configured but not found at: {dict_path}")
+                
+            logging.info(f"Validating ID coverage against dictionary: {dict_path}")
+            dict_df = self._load_csv_safe(dict_path)
+            
+            # Dynamic Dictionary Columns
+            d_cols = self.config.get('dictionary_cols', {})
+            id_col = d_cols.get('id', 'id') # Default to 'id' if missing in config
+            
+            if id_col not in dict_df.columns:
+                 raise ValueError(f"Dictionary file missing configured ID column: '{id_col}'. Found: {list(dict_df.columns)}")
+
+            # Create set of valid IDs
+            valid_ids = set(dict_df[id_col].astype(str).str.strip())
+            
+            # Analyze Train Coverage (Most Critical)
+            train_input_ids = set()
+            
+            # Use dynamic mol_col to access data
+            raw_inputs = df_train[mol_col].astype(str)
+            for val in raw_inputs:
+                tokens = val.replace('"', '').replace("'", "").split(';')
+                for t in tokens:
+                    if t.strip(): train_input_ids.add(t.strip())
+            
+            total_unique_inputs = len(train_input_ids)
+            mapped_inputs = len(train_input_ids.intersection(valid_ids))
+            
+            if total_unique_inputs == 0:
+                raise ValueError(f"No valid input tokens found in training column '{mol_col}' after parsing.")
+
+            coverage_pct = (mapped_inputs / total_unique_inputs) * 100
+            logging.info(f"Dictionary Coverage (Train): {coverage_pct:.2f}% ({mapped_inputs}/{total_unique_inputs} unique IDs mapped).")
+            
+            # Critical Failure Threshold
+            if coverage_pct < 1.0:
+                raise ValueError(f"CRITICAL: Less than 1% of training IDs found in dictionary ({coverage_pct:.2f}%). Check ID format or dictionary file.")
+            elif coverage_pct < 90.0:
+                logging.warning(f"Warning: Dictionary coverage is low ({coverage_pct:.2f}%). Many molecules will be ignored or zeroed out.")
+        
+        logging.info("--- Data Validation Passed ---")
 
     def prepare_data(self, train_path: str, test_path: str, batch_size: int):
         logging.info("Loading and Analyzing Data...")
