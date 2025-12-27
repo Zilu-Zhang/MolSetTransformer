@@ -8,7 +8,7 @@ It handles configuration parsing, environment setup (logging, seeding), and
 orchestrates the data preparation, model training, and inference stages.
 
 Modes:
-    - Application: Standard train/test split execution.
+    - Application: Standard train/test split execution (Single Run).
     - Evaluation: Supports single-run or batch-run evaluation workflows.
 """
 
@@ -18,10 +18,8 @@ import sys
 import shutil
 import logging
 import time
-import glob
 import random
 from pathlib import Path
-from typing import Dict, Any
 
 import numpy as np
 import torch
@@ -35,17 +33,6 @@ from pipeline_utils.inference_engine import InferenceEngine
 # ==========================================
 # Logging & Utility Functions
 # ==========================================
-
-class LocalFormatter(logging.Formatter):
-    """Custom logging formatter for precise timestamps."""
-    def formatTime(self, record, datefmt=None):
-        ct = self.converter(record.created)
-        if datefmt:
-            s = time.strftime(datefmt, ct)
-        else:
-            t = time.strftime("%Y-%m-%d %H:%M:%S", ct)
-            s = "%s,%03d" % (t, record.msecs)
-        return s
 
 def setup_logging(output_dir: Path):
     """Configures logging to both file and console."""
@@ -89,10 +76,6 @@ def set_seed(seed: int):
 class PipelineController:
     """
     Manages the end-to-end execution of the pipeline based on a JSON configuration.
-    
-    Attributes:
-        config (dict): The loaded configuration dictionary.
-        output_dir (Path): The directory where results, logs, and models are saved.
     """
 
     def __init__(self, config_path: str):
@@ -127,45 +110,76 @@ class PipelineController:
         
         try:
             if mode == 'application':
-                self.run_pipeline(
-                    self.config['app_config']['train_path'], 
-                    self.config['app_config']['test_path'], 
-                    "app_run"
-                )
+                # In application mode, we expect app_config with train_path/test_path
+                app_config = self.config.get('app_config') or {}
+                if not app_config:
+                    raise ValueError("Mode is 'application' but 'app_config' is missing or empty.")
+                
+                # Robustness Fix: Explicit validation of required keys
+                train_path = app_config.get('train_path')
+                test_path = app_config.get('test_path')
+                
+                if not train_path or not test_path:
+                    raise KeyError("Mode is 'application' but 'train_path' or 'test_path' is missing from app_config.")
+
+                self.run_pipeline(train_path, test_path, "app_run")
             
             elif mode == 'evaluation':
-                eval_config = self.config['eval_config']
+                # Robustness Fix: Handle case where eval_config is explictly null in JSON
+                eval_config = self.config.get('eval_config') or {}
                 method = eval_config.get('method', 'single')
                 
                 if method == 'single':
                     logging.info("Starting Single Evaluation Run...")
-                    self.run_pipeline(
-                        eval_config['train_path'], 
-                        eval_config['test_path'], 
-                        "eval_single"
-                    )
+                    
+                    train_path = eval_config.get('train_path')
+                    test_path = eval_config.get('test_path')
+                    
+                    if not train_path or not test_path:
+                        raise KeyError("Evaluation method is 'single' but 'train_path' or 'test_path' is missing from JSON.")
+
+                    self.run_pipeline(train_path, test_path, "eval_single")
                 
                 elif method == 'batch':
                     logging.info("Starting Batch Evaluation Run...")
-                    train_path = eval_config['train_path']
-                    test_folder = Path(eval_config['test_folder'])
                     
-                    # Locate all batch files
-                    test_files = sorted(list(test_folder.glob("*.csv")))
+                    folder_path_str = eval_config.get('folder_path', 'splits')
+                    folder_path = Path(folder_path_str)
+                    
+                    if not folder_path.exists():
+                        raise FileNotFoundError(f"Batch folder not found: {folder_path.resolve()}")
+                    
+                    # Dynamic File Discovery: Find all files ending in '_test.csv'
+                    test_files = sorted(list(folder_path.glob("*_test.csv")))
+                    
                     if not test_files:
-                        raise FileNotFoundError(f"No CSV files found in batch folder: {test_folder}")
+                        all_csvs = list(folder_path.glob("*.csv"))
+                        if not all_csvs:
+                             raise FileNotFoundError(f"No CSV files found in: {folder_path}")
+                        else:
+                             raise FileNotFoundError(f"Found CSVs, but none matched pattern '*_test.csv' in: {folder_path}")
                     
-                    logging.info(f"Found {len(test_files)} batch files to process.")
+                    logging.info(f"Found {len(test_files)} test files to process.")
                     
                     for i, test_file in enumerate(test_files):
-                        task_id = f"batch_{test_file.stem}"
-                        logging.info(f"Processing Batch {i+1}/{len(test_files)}: {task_id}")
+                        # Construct corresponding train file name
+                        # Assumes syntax: "Name_test.csv" -> "Name_train.csv"
+                        test_name = test_file.name
+                        base_name = test_name.replace("_test.csv", "")
+                        train_name = f"{base_name}_train.csv"
+                        train_file = folder_path / train_name
                         
-                        # Execute pipeline for the current batch file.
-                        # Note: Current implementation treats each batch file as an independent 
-                        # run (retraining the model). This supports scenarios where curriculum 
-                        # or data distribution changes per batch.
-                        self.run_pipeline(train_path, str(test_file), task_id)
+                        task_id = f"batch_{base_name}"
+                        
+                        if not train_file.exists():
+                            logging.warning(f"Skipping {test_name}: Corresponding train file {train_name} not found.")
+                            continue
+
+                        logging.info(f"Processing Batch {i+1}/{len(test_files)}: {task_id}")
+                        logging.info(f"  > Train: {train_file.name}")
+                        logging.info(f"  > Test:  {test_file.name}")
+                        
+                        self.run_pipeline(str(train_file), str(test_file), task_id)
 
         except Exception as e:
             logging.exception(f"Critical failure: {e}")
@@ -181,9 +195,7 @@ class PipelineController:
             task_id (str): Unique identifier for this run (used for file naming).
         """
         
-        # ------------------------------------
         # 1. Data Preparation & Featurization
-        # ------------------------------------
         log_section(f"1. Data & Features ({task_id})")
         
         dm = DataManager(
@@ -198,9 +210,7 @@ class PipelineController:
         logging.info(f"Input Feature Dim: {dims['features']}")
         logging.info(f"Output Label Dim: {dims['output_dim']}")
 
-        # ------------------------------------
         # 2. Model Initialization
-        # ------------------------------------
         log_section("2. Model Architecture")
         
         mb = ModelBuilder(self.config['model_architecture'])
@@ -210,9 +220,7 @@ class PipelineController:
             output_dim=dims['output_dim']
         )
 
-        # ------------------------------------
         # 3. Model Training
-        # ------------------------------------
         log_section("3. Training")
         
         trainer = TrainEngine(
@@ -223,9 +231,7 @@ class PipelineController:
         )
         best_model_path = trainer.execute(model, loaders, task_map)
         
-        # ------------------------------------
         # 4. Inference / Testing
-        # ------------------------------------
         log_section("4. Inference")
         
         inference = InferenceEngine(
