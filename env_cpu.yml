@@ -1,0 +1,19 @@
+# CPU-only conda environment for MolSetTransformer
+name: molsettransformer
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9
+  - pytorch           # CPU build (cpuonly selected below)
+  - cpuonly
+  - numpy
+  - pandas
+  - h5py
+  - tqdm
+  - rdkit
+  - pip
+  - pip:
+      - descriptastorus    # optional: RDKit descriptors
+      - chemprop           # optional: CheMeleon / chemprop embeddings
