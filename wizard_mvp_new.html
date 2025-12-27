@@ -1,0 +1,1469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AI-Chemistry Wizard V32</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f6f8; display: flex; justify-content: center; padding-top: 30px; padding-bottom: 50px; }
+        
+        #wizard-box {
+            width: 950px; background: white; border-radius: 8px; box-shadow: 0 4px 25px rgba(0,0,0,0.1);
+            display: flex; flex-direction: column; min-height: 900px; overflow: hidden;
+        }
+
+        /* Header */
+        .header { background: #2c3e50; color: white; padding: 25px; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center; }
+        .step-badge { background: #3498db; padding: 5px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; }
+
+        /* Content */
+        .content { flex: 1; padding: 40px; position: relative; }
+        .step-pane { display: none; animation: fadeIn 0.3s; }
+        .step-pane.active { display: block; }
+
+        /* --- INTRO PANE --- */
+        #intro-pane { padding: 40px 60px; text-align: center; display: block; }
+        .intro-logo { font-size: 4rem; margin-bottom: 20px; }
+        .intro-title { font-size: 2.5rem; color: #2c3e50; margin-bottom: 30px; font-weight: 700; }
+        .intro-text { font-size: 1.15rem; color: #555; line-height: 1.8; text-align: left; margin-bottom: 40px; max-width: 800px; margin-left: auto; margin-right: auto; }
+        .intro-text p { margin-bottom: 20px; }
+        .btn-big { padding: 18px 50px; font-size: 1.3rem; background: #3498db; color: white; border: none; border-radius: 30px; cursor: pointer; transition: transform 0.2s; box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4); font-weight: 600; }
+        .btn-big:hover { background: #2980b9; transform: translateY(-2px); }
+
+        /* --- SETUP PANE --- */
+        #setup-pane { padding: 20px 40px; display: none; }
+        .setup-header { text-align: center; margin-bottom: 30px; }
+        .setup-header h1 { color: #2c3e50; font-size: 2.2rem; margin-bottom: 15px; }
+        .setup-teaser { font-size: 1.15rem; color: #555; line-height: 1.6; max-width: 750px; margin: 0 auto; font-style: italic; }
+        
+        .instruction-box { background: #fdfdfd; border: 1px solid #e0e0e0; border-radius: 8px; padding: 25px; margin-bottom: 30px; }
+        .instruction-box h3 { color: #34495e; margin-top: 0; border-bottom: 2px solid #3498db; display: inline-block; padding-bottom: 5px; font-size: 1.1rem; margin-bottom: 15px; }
+        .instruction-intro { margin-bottom: 20px; color: #7f8c8d; font-weight: 500; }
+        
+        .instruction-item { margin-bottom: 25px; }
+        .instruction-item h4 { margin: 10px 0 5px 0; color: #2c3e50; font-size: 0.95rem; border-left: 3px solid #27ae60; padding-left: 10px; }
+        .instruction-desc { font-size: 0.9rem; color: #666; margin-bottom: 10px; line-height: 1.5; }
+        
+        /* Example Tables */
+        .example-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .example-table th, .example-table td { border: 1px solid #e0e0e0; padding: 10px; text-align: left; }
+        .example-table th { background-color: #f8f9fa; color: #555; font-weight: 600; }
+        .example-table td { font-family: 'Consolas', monospace; color: #c0392b; background: #fff; } 
+        
+        /* Preview Table (Step 2) */
+        .preview-box { margin-top: 15px; border: 1px solid #bdc3c7; border-radius: 6px; overflow: hidden; display: none; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .preview-header { background: #f1f5f9; padding: 10px 15px; font-size: 0.85rem; font-weight: bold; color: #475569; border-bottom: 1px solid #bdc3c7; }
+        .preview-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+        .preview-table th { background: #fff; text-align: left; padding: 8px 12px; border-bottom: 2px solid #e2e8f0; color: #2c3e50; font-weight: 600; }
+        .preview-table td { padding: 8px 12px; border-bottom: 1px solid #eee; color: #334155; font-family: 'Consolas', monospace; }
+
+        .pro-tip { background: #e8f6f3; color: #16a085; padding: 15px; border-radius: 6px; font-size: 0.95rem; margin-bottom: 30px; border-left: 5px solid #1abc9c; }
+
+        .start-section { text-align: center; background: #fcfcfc; padding: 30px; border-radius: 8px; border: 1px solid #eee; }
+        .project-input-group { margin-bottom: 20px; }
+        .project-input-group input { padding: 15px; font-size: 1.2rem; width: 400px; border: 2px solid #bdc3c7; border-radius: 6px; text-align: center; color: #2c3e50; font-weight: 600; }
+        .btn-start { padding: 15px 50px; font-size: 1.2rem; background: #3498db; color: white; border: none; border-radius: 30px; cursor: pointer; transition: transform 0.2s; box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3); }
+        .btn-start:hover { background: #2980b9; transform: translateY(-2px); }
+        
+        .btn-text-only { background: none; border: none; color: #3498db; cursor: pointer; font-size: 0.9rem; margin-bottom: 10px; display: inline-flex; align-items: center; gap: 5px; font-weight: 600; }
+        .btn-text-only:hover { text-decoration: underline; }
+
+        /* Form Elements */
+        .form-section { margin-bottom: 30px; padding-bottom: 20px; }
+        .subsection { background: #fcfcfc; padding: 15px; border: 1px solid #e0e0e0; border-radius: 6px; margin-bottom: 20px; }
+        .subsection h4 { margin: 0 0 15px 0; color: #2c3e50; font-size: 1rem; border-bottom: 2px solid #3498db; display: inline-block; padding-bottom: 3px; }
+
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: #34495e; }
+        .desc { font-size: 0.85rem; color: #7f8c8d; margin-bottom: 8px; display: block; line-height: 1.4; }
+        .path-note { font-size: 0.8rem; color: #e67e22; margin-top: 4px; display: block; font-style: italic; }
+        
+        input[type="text"], input[type="number"], select { 
+            width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box; font-size: 1rem;
+        }
+        input:focus, select:focus { outline: none; border-color: #3498db; box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1); }
+        
+        /* Validation Error State */
+        input.input-error, select.input-error, .file-drop.input-error, .file-drop-compact.input-error { 
+            border-color: #e74c3c; background-color: #fdf2f2; 
+        }
+
+        /* Specific Layouts */
+        .grid-2-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .grid-3-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }
+        
+        /* UNIFIED FILE UPLOAD UI (Dashed Style) */
+        .file-drop, .file-drop-compact { 
+            border: 2px dashed #bdc3c7; text-align: center; color: #7f8c8d; 
+            border-radius: 8px; cursor: pointer; background: #fdfdfd; transition: all 0.2s;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .file-drop { padding: 30px; min-height: 50px; }
+        .file-drop-compact { padding: 15px; margin-bottom: 10px; }
+        
+        .file-drop:hover, .file-drop-compact:hover { border-color: #3498db; background: #ebf5fb; color: #2980b9; }
+        .file-msg { font-weight: 500; }
+        .file-selected { color: #27ae60; font-weight: bold; }
+
+        /* Unified Settings Boxes (Clean Neutral) */
+        .settings-box { 
+            background: #f8f9fa; padding: 20px; border-radius: 6px; 
+            margin-bottom: 25px; border: 1px solid #e9ecef;
+        }
+        
+        /* Unified Blue Notification/Strategy Box */
+        .strategy-desc, .notification-box { 
+            background: #ebf5fb; color: #2c3e50; padding: 15px; 
+            border-radius: 4px; font-size: 0.95rem; margin-bottom: 20px; 
+            border-left: 5px solid #3498db; line-height: 1.6;
+        }
+
+        .input-group-row { display: flex; gap: 10px; }
+        .input-group-row input { flex: 1; }
+        .btn-tool { 
+            background: #e0e0e0; border: 1px solid #ccc; border-radius: 6px; 
+            padding: 0 20px; cursor: pointer; height: 45px; font-weight: 600; color: #555;
+        }
+        .btn-tool:hover { background: #d5d5d5; }
+
+        /* Featurization Drag & Drop */
+        .feat-container { display: flex; gap: 20px; height: 220px; }
+        .feat-box { 
+            flex: 1; border: 2px solid #e0e0e0; border-radius: 8px; padding: 10px; 
+            background: #f8f9fa; display: flex; flex-direction: column; gap: 8px; overflow-y: auto;
+        }
+        .feat-box.drag-over { border-color: #3498db; background: #eef7fc; }
+        .feat-item {
+            background: white; border: 1px solid #dcdcdc; padding: 10px; border-radius: 6px;
+            cursor: grab; font-size: 0.9rem; box-shadow: 0 2px 4px rgba(0,0,0,0.03); display: flex; align-items: center;
+        }
+        .feat-item::before { content: '::'; color: #ccc; margin-right: 8px; letter-spacing: -1px; }
+
+        .mapping-grid { display: flex; gap: 20px; margin-bottom: 20px; background: #fff; padding: 15px; border-radius: 6px; border: 1px solid #e2e8f0; }
+        .mapping-col { flex: 1; }
+        .mapping-col h5 { margin: 0 0 10px 0; color: #2d3748; font-size: 0.95rem; }
+
+        .slider-wrapper { padding: 15px 0; }
+        .slider-labels { display: flex; justify-content: space-between; font-weight: bold; font-size: 0.8rem; margin-bottom: 8px; }
+        
+        /* SLIDER STYLE FIX (Blue Fill) */
+        input[type=range] { 
+            -webkit-appearance: none;
+            width: 100%; 
+            cursor: pointer; 
+            background: #e0e0e0; /* Default gray track, JS will update to gradient */
+            height: 8px;
+            border-radius: 4px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px; width: 20px; 
+            border-radius: 50%; 
+            background: #3498db; 
+            margin-top: -6px; /* Center thumb */
+            box-shadow: 0 0 2px rgba(0,0,0,0.2);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 8px;
+            background: transparent; /* Transparent so input background shows */
+            border-radius: 4px;
+        }
+        /* Firefox */
+        input[type=range]::-moz-range-track {
+            width: 100%; height: 8px; background: #e0e0e0; border-radius: 4px;
+        }
+        input[type=range]::-moz-range-progress {
+            background-color: #3498db; height: 8px; border-radius: 4px;
+        }
+        input[type=range]::-moz-range-thumb {
+            height: 20px; width: 20px; border: none; border-radius: 50%; background: #3498db; box-shadow: 0 0 2px rgba(0,0,0,0.2);
+        }
+
+        /* 3-Stage Inputs */
+        .stage-row { display: flex; gap: 15px; margin-top: 10px; margin-bottom: 20px; }
+        .stage-grp { flex: 1; background: white; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0; }
+        .stage-lbl { font-size: 0.8rem; font-weight: bold; color: #4a5568; display: block; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        /* Separator */
+        .section-sep { border: 0; border-top: 1px solid #eee; margin: 30px 0; }
+
+        /* Footer & Utils */
+        .footer { padding: 25px; background: #f8f9fa; border-top: 1px solid #eee; display: flex; justify-content: space-between; border-radius: 0 0 8px 8px; }
+        button { padding: 12px 30px; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: 600; transition: background 0.2s; }
+        .btn-next { background: #27ae60; color: white; }
+        .btn-next:hover { background: #219150; }
+        .btn-back { background: #95a5a6; color: white; }
+        .btn-back:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-home { background: transparent; color: #3498db; border: 1px solid #3498db; margin-right: auto; }
+        
+        .error-msg { color: #e74c3c; font-size: 0.85rem; display: none; margin-top: 5px; }
+        .validation-alert { color: #e74c3c; font-weight: bold; display: none; }
+
+        /* Final JSON View & Highlight */
+        .action-row { display: flex; gap: 15px; justify-content: center; margin-top: 30px; }
+        .btn-action { padding: 15px 25px; font-size: 1rem; color: white; border: none; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .btn-action:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn-copy { background-color: #34495e; }
+        .btn-dl { background-color: #27ae60; }
+        .btn-restart { background-color: #e67e22; }
+
+        /* Syntax Highlighter Styles */
+        pre { 
+            background: #f6f8fa; /* Light background */
+            color: #333; 
+            padding: 20px; border-radius: 6px; 
+            overflow: auto; max-height: 650px; 
+            font-family: 'Consolas', 'Monaco', monospace; 
+            font-size: 0.95rem;
+            border: 1px solid #e1e4e8;
+        }
+        .string { color: #22863a; }  /* Green */
+        .number { color: #e36209; }  /* Orange */
+        .boolean { color: #005cc5; } /* Blue */
+        .null { color: #005cc5; }    /* Blue */
+        .key { color: #6f42c1; font-weight: bold; }     /* Purple */
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+<div id="wizard-box">
+    <div class="header" id="main-header" style="display:none;">
+        <h2 id="step-title">Step 1: Scope & Task</h2>
+        <span class="step-badge">Step <span id="step-num">1</span>/6</span>
+    </div>
+
+    <div class="content">
+        <div id="intro-pane">
+            <div class="intro-logo">⚗️</div>
+            <div class="intro-title">AI-Chemistry Wizard</div>
+            <div class="intro-text">
+                <p>This wizard enables <strong>flexible deep learning</strong> for molecular property prediction with variable-length, multi-molecule inputs. Built on <strong>state-of-the-art architectures</strong>, it supports <strong>regression</strong>, <strong>binary classification</strong>, and <strong>multi-task/label classification tasks</strong>.</p>
+                <p>You can choose from <strong>diverse molecular featurizations</strong>, including topological descriptors, physicochemical properties, and graph-based embeddings. <strong>Separate evaluation and application modes</strong> allow efficient benchmarking across pre-split datasets and <strong>interpretable analysis</strong> of inter-molecular interactions via attention mechanisms.</p>
+                <p>Advanced features such as <strong>loss function weighting</strong> and <strong>fully configurable model architectures</strong> give you complete control to tailor models to your specific use case.</p>
+            </div>
+            <div class="intro-btn-container" style="text-align: center;">
+                <button class="btn-big" onclick="startSetup()">Get Started</button>
+            </div>
+        </div>
+
+        <div id="setup-pane">
+            <button class="btn-text-only" onclick="goToIntro()">← Read Intro Again</button>
+            <div class="setup-header">
+                <h1>AI-Chemistry Wizard</h1>
+                <p class="setup-teaser">Are you ready to unlock the hidden patterns of chemical space? This isn't just a configuration tool; it's your gateway to state-of-the-art Deep Learning. Let's design a model that learns the language of molecules.</p>
+            </div>
+
+            <div class="instruction-box">
+                <h3>Input Files Required by the Wizard</h3>
+                <p class="instruction-intro">Here are the files the wizard expects to receive:</p>
+                
+                <div class="instruction-item">
+                    <h4>1. Data File (CSV)</h4>
+                    <p class="instruction-desc">A CSV containing the molecular composition and target labels. Note the flexibility in the number of molecules per input.</p>
+                    <table class="example-table">
+                        <thead><tr><th>Molecular_Composition</th><th>Label</th></tr></thead>
+                        <tbody>
+                            <tr><td>Aspirin; Caffeine</td><td>0</td></tr>
+                            <tr><td>Acetaminophen; Ibuprofen; Warfarin</td><td>1</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="instruction-item">
+                    <h4>2. Chemical Dictionary File (CSV)</h4>
+                    <p class="instruction-desc">A simple CSV mapping IDs to SMILES strings.</p>
+                    <table class="example-table">
+                        <thead><tr><th>Molecule_ID</th><th>SMILES</th></tr></thead>
+                        <tbody>
+                            <tr><td>Aspirin</td><td>CC(=O)Oc1ccccc1C(=O)O</td></tr>
+                            <tr><td>Caffeine</td><td>CN1C=NC2=C1C(=O)N(C(=O)N2C)C</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="instruction-item">
+                    <h4>3. Molecule Embeddings</h4>
+                    <p class="instruction-desc">You can allow the wizard to calculate features in the pipeline, or provide pre-calculated embeddings (.h5).</p>
+                </div>
+            </div>
+
+            <div class="pro-tip">
+                💡 <strong>Pro Tip:</strong> We highly recommend walking through the wizard using dummy inputs first to understand the available configurations and logic flow before using real data.
+            </div>
+
+            <div class="start-section">
+                <h3 style="color:#2c3e50; margin-bottom:15px;">Are you ready! But first let's name your project...</h3>
+                <div class="project-input-group">
+                    <input type="text" id="project-name" placeholder="e.g. My_Kinase_Project_V1">
+                </div>
+                <button class="btn-start" onclick="startWizard()">Start Designing</button>
+            </div>
+        </div>
+
+        <div id="step-1" class="step-pane">
+            <div class="form-section">
+                <label>Operational Mode</label>
+                <select id="op-mode" onchange="toggleModeSettings()">
+                    <option value="application">Application (Train-Predict)</option>
+                    <option value="evaluation">Evaluation (Benchmark)</option>
+                </select>
+            </div>
+            
+            <div id="app-settings" style="display:block;" class="settings-box">
+                <div style="margin-top:5px">
+                    <label>Training File Path</label>
+                    <div class="input-group-row">
+                        <input type="text" id="app-path-train" class="required-field" placeholder="path/to/train.csv">
+                        <button class="btn-tool" onclick="triggerBrowse('app-path-train')">Browse</button>
+                    </div>
+                    <span class="path-note">* Remember to add directory prefixes if needed.</span>
+                    
+                    <label style="margin-top:15px">Test/Prediction File Path</label>
+                    <div class="input-group-row">
+                        <input type="text" id="app-path-test" class="required-field" placeholder="path/to/test.csv">
+                        <button class="btn-tool" onclick="triggerBrowse('app-path-test')">Browse</button>
+                    </div>
+                    <span class="path-note">* Remember to add directory prefixes if needed.</span>
+                </div>
+            </div>
+
+            <div id="eval-settings" style="display:none;" class="settings-box">
+                <label>Evaluation Method</label>
+                <select id="eval-method" onchange="toggleEvalInputs()">
+                    <option value="single">Single Train-Test Pair</option>
+                    <option value="batch">Batch (Folder of Pairs)</option>
+                </select>
+                
+                <div id="eval-single-inputs" style="margin-top:15px">
+                    <label>Training File Path</label>
+                    <div class="input-group-row">
+                        <input type="text" id="eval-path-train" class="required-field" placeholder="path/to/train.csv">
+                        <button class="btn-tool" onclick="triggerBrowse('eval-path-train')">Browse</button>
+                    </div>
+                    <span class="path-note">* Remember to add directory prefixes if needed.</span>
+                    
+                    <label style="margin-top:15px">Test File Path</label>
+                    <div class="input-group-row">
+                        <input type="text" id="eval-path-test" class="required-field" placeholder="path/to/test.csv">
+                        <button class="btn-tool" onclick="triggerBrowse('eval-path-test')">Browse</button>
+                    </div>
+                    <span class="path-note">* Remember to add directory prefixes if needed.</span>
+                </div>
+
+                <div id="eval-batch-inputs" style="display:none; margin-top:15px">
+                    <label>Data Folder Path</label>
+                    <input type="text" id="path-folder" class="required-field" placeholder="/path/to/data_folder/">
+                    
+                    <div class="grid-2-col" style="margin-top:10px">
+                        <div>
+                            <label>Training File Naming Syntax</label>
+                            <input type="text" id="batch-syntax-train" class="required-field" placeholder="e.g. {mol}_train.csv">
+                            <small class="desc">Use {} for variables (e.g., {mol}).</small>
+                        </div>
+                        <div>
+                            <label>Testing File Naming Syntax</label>
+                            <input type="text" id="batch-syntax-test" class="required-field" placeholder="e.g. {mol}_test.csv" onfocus="autoFillTestSyntax()">
+                            <small class="desc">Matches training vars. Auto-fills on click.</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <input type="file" id="util-file" style="display:none" onchange="applyFileName()">
+
+            <hr class="section-sep">
+
+            <div class="form-section">
+                <label>Prediction Task</label>
+                <select id="task-type" onchange="handleTaskTypeChange()">
+                    <option value="regression">Regression</option>
+                    <option value="classification">Classification</option>
+                    <option value="multilabel">Multi-Label</option>
+                    <option value="multitask">Multi-Task</option>
+                </select>
+                <div id="task-type-desc" class="desc" style="margin-top:8px; color:#34495e; background:#eef2f7; padding:10px; border-radius:4px; border-left:4px solid #3498db; display:none;"></div>
+            </div>
+
+            <div id="sub-task-container" style="display:none;" class="settings-box">
+                <label>Task Specification</label>
+                <select id="sub-task-type"></select>
+            </div>
+
+            <div id="multitask-specifics" style="display:none;" class="settings-box">
+                <label>Total Unique Number of Molecules per Sample</label>
+                <input type="number" id="num-mols-per-sample" class="required-field" placeholder="e.g. 2" onclick="autoFillValue(this, 2)" onchange="checkCurriculumEligibility()">
+                <small class="desc">Separate head assigned for each task. Support loss function weighting and curriculum learning (if the value is set to 2).</small>
+            </div>
+        </div>
+
+        <div id="step-2" class="step-pane">
+            <div class="form-section">
+                <label>1. Understand Your Data Structure</label>
+                <span class="desc">Please define the column names for your molecule set and labels. If you uploaded a Single Train file in Step 1, these may be auto-filled.</span>
+                
+                <div id="step2-upload-ref-container" style="display:none; margin-bottom:15px;">
+                    <div class="file-drop" onclick="document.getElementById('csv-upload').click()">
+                        <span id="file-name" class="file-msg">Click or Drag Reference CSV Here (Batch Mode)</span>
+                        <input type="file" id="csv-upload" accept=".csv" style="display:none" onchange="handleFileUpload(this, 'csv-preview')">
+                    </div>
+                    <div id="csv-preview" class="preview-box">
+                        <div class="preview-header">Data Preview (First 3 Rows)</div>
+                        <div id="csv-preview-content"></div>
+                    </div>
+                </div>
+                
+                <div id="step1-data-preview" class="preview-box">
+                    <div class="preview-header">Data Preview (From Step 1 File)</div>
+                    <div id="step1-preview-content"></div>
+                </div>
+                
+                <div id="col-mapping-area" style="margin-top:20px;">
+                    <div class="grid-2-col">
+                        <div>
+                            <label>Molecular Composition Input Column</label>
+                            <input type="text" id="col-mol-id" class="required-field" placeholder="e.g. Molecular_Composition">
+                        </div>
+                        <div>
+                            <label>Label Column</label>
+                            <input type="text" id="col-label" class="required-field" placeholder="e.g. Label">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+
+                <hr class="section-sep">
+
+                <label>2. Chemical Dictionary File</label>
+                <span class="desc">Please upload a file mapping Molecule IDs to SMILES (2 Columns).</span>
+                <div class="input-group-row">
+                    <input type="text" id="path-dict" class="required-field" placeholder="path/to/dictionary.csv">
+                    <input type="file" id="dict-upload" accept=".csv" style="display:none" onchange="handleDictUpload(this)">
+                    <button class="btn-tool" onclick="document.getElementById('dict-upload').click()">Browse & Detect</button>
+                </div>
+                <span class="path-note">* Remember to add directory prefixes if needed.</span>
+                
+                <div id="dict-preview" class="preview-box">
+                    <div class="preview-header">Dictionary Preview (First 3 Rows)</div>
+                    <div id="dict-preview-content"></div>
+                </div>
+
+                <div id="dict-mapping-area" style="margin-top:20px;">
+                    <div class="grid-2-col">
+                        <div>
+                            <label>Molecule ID Column</label>
+                            <input type="text" id="dict-col-id" class="required-field" placeholder="e.g. Molecule_ID">
+                        </div>
+                        <div>
+                            <label>SMILES Column</label>
+                            <input type="text" id="dict-col-smiles" class="required-field" placeholder="e.g. SMILES">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                
+                <hr class="section-sep">
+
+                <label>3. Molecule Featurization Strategy</label>
+                <div style="margin-bottom:15px; padding:10px; background:#f9f9f9; border-radius:4px;">
+                    <span style="font-weight:bold; margin-right:15px;">Do you have pre-calculated feature data?</span>
+                    <label style="display:inline-block; margin-right:15px; cursor:pointer;">
+                        <input type="radio" name="feat-strat" value="precalc" onchange="toggleFeatUI()"> Yes (Upload File)
+                    </label>
+                    <label style="display:inline-block; cursor:pointer;">
+                        <input type="radio" name="feat-strat" value="pipeline" checked onchange="toggleFeatUI()"> No (Build Pipeline)
+                    </label>
+                </div>
+
+                <div id="feat-file-section" style="display:none;">
+                    <label>Feature Data File (.h5 only)</label>
+                    <span class="desc">
+                        Expected format: Python dictionary where keys are SMILES and values are embedding vectors. 
+                        <a href="https://blog.finxter.com/5-best-ways-to-convert-python-dict-to-hdf5/" target="_blank" style="color:#3498db">How to convert Dict to HDF5?</a>
+                    </span>
+                    <div class="input-group-row" style="margin-top:10px;">
+                        <input type="text" id="path-feat-file" class="required-field" placeholder="path/to/features.h5">
+                        <button class="btn-tool" onclick="triggerBrowse('path-feat-file')">Browse</button>
+                    </div>
+                    <span class="path-note">* Remember to add directory prefixes if needed.</span>
+                </div>
+
+                <div id="feat-builder-section">
+                    <span class="desc">Drag options from Left to Right to add to pipeline. Drag within Right box to reorder.</span>
+                    <div class="feat-container">
+                        <div class="feat-box" id="feat-source" ondrop="drop(event)" ondragover="allowDrop(event)">
+                            <div class="feat-item" id="f1" draggable="true" ondragstart="drag(event)">Morgan Fingerprints</div>
+                            <div class="feat-item" id="f2" draggable="true" ondragstart="drag(event)">RDKit Physicochemical Properties (Normalized)</div>
+                            <div class="feat-item" id="f3" draggable="true" ondragstart="drag(event)">CheMeleon Embeddings</div>
+                        </div>
+                        <div class="feat-box" id="feat-target" ondrop="drop(event)" ondragover="allowDrop(event)" style="border-color:#27ae60; background:#f0fff4;">
+                            </div>
+                    </div>
+                    <div class="error-msg" id="err-feat">Please select at least one featurizer.</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="step-3" class="step-pane">
+            <div class="subsection">
+                <h4>Transformer Backbone</h4>
+                <div class="grid-2-col">
+                    <div><label>Model Dimension</label><input type="number" id="arch-dim" class="required-field" value="256"></div>
+                    <div><label>Attention Heads</label><input type="number" id="arch-heads" class="required-field" value="8"></div>
+                    <div><label>Attention Blocks</label><input type="number" id="arch-sab" class="required-field" value="4"></div>
+                    <div><label>Num Integrators</label><input type="number" id="arch-seeds" class="required-field" value="6"></div>
+                </div>
+            </div>
+
+            <div class="subsection">
+                <h4>Dropout Regularization</h4>
+                <div class="grid-3-col">
+                    <div><label>Input Dropout</label><input type="number" step="0.1" id="arch-dr-in" class="required-field" value="0.1"></div>
+                    <div><label>Transformer Dropout</label><input type="number" step="0.1" id="arch-dr-trans" class="required-field" value="0.3"></div>
+                    <div><label>Head Dropout</label><input type="number" step="0.1" id="arch-dr-head" class="required-field" value="0.5"></div>
+                </div>
+            </div>
+
+            <div class="form-section" style="margin-top:20px">
+                <label>Head Hidden Layers</label>
+                <input type="text" id="arch-head-layers" class="required-field" value="[128, 64]">
+            </div>
+
+            <div class="form-section">
+                <label>Random Seed</label>
+                <input type="number" id="arch-rand-seed" class="required-field" value="42">
+                <span class="desc">Why do many prefer this number? <a href="https://medium.com/geekculture/the-story-behind-random-seed-42-in-machine-learning-b838c4ac290a" target="_blank" style="color:#3498db">Read the story.</a></span>
+            </div>
+
+            <div class="form-section">
+                <label>Monte Carlo Dropout Iterations</label>
+                <input type="number" id="arch-mc-iter" class="required-field" value="50">
+                <span class="desc">Set to 1 for deterministic prediction. Set to >1 for epistemic uncertainty estimation.</span>
+            </div>
+
+            <div class="form-section">
+                <label>Attention Score Export</label>
+                <select id="arch-attn-interp">
+                    <option value="true">On</option>
+                    <option value="false">Off</option>
+                </select>
+                <span class="desc" id="attn-hint" style="color:#e67e22">Only available in Application mode.</span>
+            </div>
+        </div>
+
+        <div id="step-4" class="step-pane">
+            <div class="form-section">
+                <label>Loss Function Weighting</label>
+                <select id="weight-strategy" onchange="toggleWeightSettings()">
+                    <option value="equal">Equal Weight</option>
+                    <option value="custom">Custom Task Weights</option>
+                    <option value="curriculum" id="opt-curriculum" disabled>Three-Stage Curriculum Transfer Learning</option>
+                </select>
+            </div>
+            
+            <div id="strat-desc" class="strategy-desc"></div>
+
+            <div id="custom-weights-ui" class="settings-box" style="display:none">
+                <label id="lbl-custom-weight-title">Define Weights per Task</label>
+                <div id="custom-weights-container" style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-top:10px;"></div>
+            </div>
+
+            <div id="curriculum-ui" class="settings-box" style="display:none">
+                <div class="form-section" style="border-bottom:none; margin-bottom:0;">
+                    <label>Define Tasks</label>
+                    <span class="desc" id="mapping-desc" style="font-style:italic;">Please specify...</span>
+                </div>
+                
+                <div class="mapping-grid">
+                    <div class="mapping-col">
+                        <h5 id="lbl-task-primary">Primary Task Value</h5>
+                        <input type="text" id="val-primary" class="required-field" placeholder="e.g. 3" onclick="autoFillValue(this, 3)">
+                    </div>
+                    <div class="mapping-col">
+                        <h5 id="lbl-task-complementary">Complementary Task Value</h5>
+                        <input type="text" id="val-complementary" class="required-field" placeholder="e.g. 2" onclick="autoFillValue(this, 2)">
+                    </div>
+                </div>
+                
+                <label>Stage 2: Transfer Learning Balance</label>
+                <div class="slider-wrapper" style="padding: 15px; background: #fff; border: 1px solid #e0e0e0; border-radius: 6px;">
+                    <div class="slider-labels" style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 0.5px;">
+                        <span>MIN PRIMARY</span>
+                        <span>MAX PRIMARY</span>
+                    </div>
+
+                    <input type="range" id="stage2-slider" min="0" max="100" value="50" oninput="handleSliderChange(this)">
+
+                    <div style="display: flex; justify-content: space-between; margin-top: 12px; font-weight: bold; font-size: 1.1rem;">
+                        <span style="color: #888;">
+                            Complementary Task: <span id="txt-sec">50</span>%
+                        </span>
+                        <span style="color: #3498db;">
+                            Primary Task: <span id="txt-pri">50</span>%
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="step-5" class="step-pane">
+            <div class="grid-2-col">
+                <div>
+                    <label>Loss Function</label>
+                    <select id="loss-function" disabled style="background:#e9ecef"></select>
+                </div>
+                <div>
+                    <label>Optimizer</label>
+                    <select id="optimizer" disabled style="background:#e9ecef"><option value="adam">Adam</option></select>
+                </div>
+            </div>
+
+            <div id="standard-train-settings">
+                <div class="form-section" style="margin-top:20px;">
+                    <label>Batch Size</label>
+                    <input type="number" id="batch-global" class="required-field" value="32">
+                </div>
+                <div class="form-section">
+                    <label>Epochs</label>
+                    <input type="number" id="epochs-global" class="required-field" value="100">
+                </div>
+                <div class="form-section">
+                    <label>Learning Rate</label>
+                    <input type="number" id="lr-global" class="required-field" value="0.001">
+                </div>
+            </div>
+
+            <div id="curriculum-train-settings" style="display:none; margin-top:20px;">
+                <div class="notification-box" style="border-left: 5px solid #3498db;">
+                    <strong>Curriculum Mode Active:</strong> Settings are defined per stage.
+                </div>
+
+                <div class="stage-row">
+                    <div class="stage-grp">
+                        <span class="stage-lbl">Stage 1: Warm Up</span>
+                        <label>Epochs</label><input type="number" id="ep-s1" class="required-field" value="20">
+                        <label>Batch Size</label><input type="number" id="bs-s1" class="required-field" value="32">
+                        <label>Learning Rate</label><input type="number" id="lr-s1" class="required-field" value="0.001">
+                    </div>
+                    <div class="stage-grp">
+                        <span class="stage-lbl">Stage 2: Transfer</span>
+                        <label>Epochs</label>
+                        <input type="number" id="ep-s2" class="required-field" value="50">
+                        <div style="background: #f8fafc; padding: 10px; border: 1px solid #e2e8f0; border-radius: 4px; margin: 10px 0;">
+                            <label style="font-size:0.75rem; color:#718096; margin-bottom:2px;">BATCH SIZE (PRIMARY TASK)</label>
+                            <input type="number" id="bs-s2-pri" class="required-field" value="32" style="font-size:0.9rem; padding:6px; margin-bottom:8px;">
+                            <label style="font-size:0.75rem; color:#718096; margin-bottom:2px;">BATCH SIZE (COMPLEMENTARY TASK)</label>
+                            <input type="number" id="bs-s2-sec" class="required-field" value="32" style="font-size:0.9rem; padding:6px; margin-bottom:0;">
+                        </div>
+                        <label>Learning Rate</label>
+                        <input type="number" id="lr-s2" class="required-field" value="0.0005">
+                    </div>
+                    <div class="stage-grp">
+                        <span class="stage-lbl">Stage 3: Fine Tune</span>
+                        <label>Epochs</label><input type="number" id="ep-s3" class="required-field" value="30">
+                        <label>Batch Size</label><input type="number" id="bs-s3" class="required-field" value="32">
+                        <label>Learning Rate</label><input type="number" id="lr-s3" class="required-field" value="0.0001">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="step-6" class="step-pane">
+            <div style="margin-bottom:15px; text-align:center;">
+                <h3>Configuration Ready</h3>
+                <p>Your model architecture and training strategy are defined.</p>
+            </div>
+            
+            <pre id="json-output"></pre>
+
+            <div class="action-row">
+                <button class="btn-action btn-copy" onclick="copyJSON()">📋 Copy JSON</button>
+                <button class="btn-action btn-dl" onclick="downloadJSON()">💾 Download .json</button>
+                <button class="btn-action btn-restart" onclick="resetWizard()">🔄 Start Over</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer" id="main-footer" style="display:none;">
+        <button class="btn-home" onclick="goToHome()">← Edit Project</button>
+        <div class="validation-alert" id="val-alert" style="margin-right:20px;">Please fill in all required fields.</div>
+        <div>
+            <button class="btn-back" id="btn-back" onclick="changeStep(-1)" disabled>Back</button>
+            <button class="btn-next" id="btn-next" onclick="changeStep(1)">Next</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentStep = 1;
+    let step1Headers = []; // Store headers from Step 1 upload
+    let activePathInputId = null;
+    
+    // STARTUP FLOW
+    function startSetup() {
+        document.getElementById('intro-pane').style.display = 'none';
+        document.getElementById('setup-pane').style.display = 'block';
+        window.scrollTo(0,0);
+        handleTaskTypeChange(); // Initialize description
+    }
+
+    function goToIntro() {
+        document.getElementById('setup-pane').style.display = 'none';
+        document.getElementById('intro-pane').style.display = 'block';
+        window.scrollTo(0,0);
+    }
+
+    function startWizard() {
+        const projName = document.getElementById('project-name').value;
+        const validName = /^[a-zA-Z0-9_-]+$/;
+        if(projName.trim() === '') { alert("Please enter a Project Name."); return; }
+        if(!validName.test(projName.trim())) { alert("Project Name can only contain letters, numbers, underscores and dashes."); return; }
+        
+        document.getElementById('setup-pane').style.display = 'none';
+        document.getElementById('main-header').style.display = 'flex';
+        document.getElementById('main-footer').style.display = 'flex';
+        currentStep = 1;
+        go(1);
+    }
+
+    function goToHome() {
+        document.getElementById('setup-pane').style.display = 'block';
+        document.getElementById('main-header').style.display = 'none';
+        document.getElementById('main-footer').style.display = 'none';
+        document.getElementById(`step-${currentStep}`).classList.remove('active');
+        document.getElementById(`step-${currentStep}`).style.display = 'none';
+    }
+
+    function resetWizard() {
+        if(confirm("Are you sure you want to start over?")) location.reload(); 
+    }
+
+    // --- SLIDER LOGIC ---
+    function handleSliderChange(slider) {
+        // Update Labels
+        const val = parseInt(slider.value);
+        document.getElementById('txt-pri').innerText = val;
+        document.getElementById('txt-sec').innerText = 100 - val;
+        
+        // Update Fill
+        slider.style.background = `linear-gradient(to right, #3498db ${val}%, #e0e0e0 ${val}%)`;
+    }
+
+    // --- HELPER: Auto-Fill Value ---
+    function autoFillValue(element, val) {
+        if(element.value === '') {
+            element.value = val;
+            element.dispatchEvent(new Event('change'));
+        }
+    }
+
+    // --- LOGIC FUNCTIONS ---
+    function autoFillTestSyntax() {
+        const trainVal = document.getElementById('batch-syntax-train').value;
+        const testInput = document.getElementById('batch-syntax-test');
+        if(testInput.value === '' && trainVal !== '') {
+            if(trainVal.toLowerCase().includes('train')) {
+                testInput.value = trainVal.replace(/train/gi, "test");
+            } else {
+                testInput.value = trainVal; 
+            }
+        }
+    }
+
+    // Drag & Drop
+    function allowDrop(ev) { ev.preventDefault(); ev.currentTarget.classList.add('drag-over'); }
+    function drag(ev) { ev.dataTransfer.setData("text", ev.target.id); }
+    function drop(ev) {
+        ev.preventDefault(); ev.currentTarget.classList.remove('drag-over');
+        var data = ev.dataTransfer.getData("text");
+        if(ev.target.classList.contains('feat-box')) ev.target.appendChild(document.getElementById(data));
+        else document.getElementById('feat-target').appendChild(document.getElementById(data));
+    }
+    document.querySelectorAll('.feat-box').forEach(box => {
+        box.addEventListener('dragleave', () => box.classList.remove('drag-over'));
+    });
+
+    // Navigation
+    const stepTitles = ["Step 1: Scope & Task", "Step 2: Dataset & Featurization", "Step 3: Architecture Definition", "Step 4: Multi-Task Strategy", "Step 5: Training Settings", "Step 6: Review & Export"];
+
+    function changeStep(dir) {
+        if (dir === 1 && !validateCurrentStep()) return;
+        const taskType = document.getElementById('task-type').value;
+        const nextStep = currentStep + dir;
+
+        go(nextStep);
+    }
+
+    function go(step) {
+        // Pre-step Logic: Entering Step 2
+        if (step === 2) {
+            const mode = document.getElementById('op-mode').value;
+            const evalMethod = document.getElementById('eval-method').value;
+            const refUploadContainer = document.getElementById('step2-upload-ref-container');
+            const step1Preview = document.getElementById('step1-data-preview');
+            
+            // Logic: Batch = Manual Upload + Preview. Single = Auto-Preview from Step 1.
+            if (mode === 'evaluation' && evalMethod === 'batch') {
+                refUploadContainer.style.display = 'block';
+                step1Preview.style.display = 'none';
+            } else {
+                refUploadContainer.style.display = 'none';
+                // Trigger auto-fill if headers exist
+                if (step1Headers.length >= 2) {
+                    document.getElementById('col-mol-id').value = step1Headers[0];
+                    document.getElementById('col-label').value = step1Headers[1];
+                }
+                // Show Step 1 file preview if available
+                if (step1Headers.length > 0) {
+                    step1Preview.style.display = 'block';
+                }
+            }
+        }
+
+        for(let i=1; i<=6; i++) {
+            const el = document.getElementById(`step-${i}`);
+            if(el) { el.classList.remove('active'); el.style.display = 'none'; }
+        }
+        const currentEl = document.getElementById(`step-${step}`);
+        currentEl.style.display = 'block';
+        setTimeout(() => currentEl.classList.add('active'), 10); 
+
+        currentStep = step;
+        document.getElementById('step-num').innerText = currentStep;
+        document.getElementById('step-title').innerText = stepTitles[currentStep-1];
+        
+        const nextBtn = document.getElementById('btn-next');
+        const backBtn = document.getElementById('btn-back');
+        if (step === 6) { nextBtn.style.display = 'none'; } 
+        else { nextBtn.style.display = 'inline-block'; nextBtn.innerText = "Next"; }
+        backBtn.disabled = (currentStep === 1);
+        document.getElementById('val-alert').style.display = 'none';
+        
+        const homeBtn = document.querySelector('.btn-home');
+        homeBtn.style.visibility = (step === 1) ? 'visible' : 'hidden';
+
+        if (currentStep === 3) checkAttnEligibility();
+        if (currentStep === 4) { 
+            checkCurriculumEligibility(); 
+            toggleWeightSettings(); 
+            handleSliderChange(document.getElementById('stage2-slider'));
+        }
+        if (currentStep === 5) configureStep5();
+        if (currentStep === 6) generateJSON();
+    }
+
+    function validateCurrentStep() {
+        let valid = true;
+        const currentPane = document.getElementById(`step-${currentStep}`);
+        const inputs = currentPane.querySelectorAll('input.required-field, select.required-field');
+        
+        inputs.forEach(input => {
+            if (input.offsetParent === null) return; 
+            if (input.value.trim() === '') {
+                input.classList.add('input-error');
+                if(input.classList.contains('hidden-input')) {
+                    input.parentElement.classList.add('input-error');
+                }
+                valid = false;
+            } else {
+                input.classList.remove('input-error');
+                if(input.classList.contains('hidden-input')) {
+                    input.parentElement.classList.remove('input-error');
+                }
+            }
+        });
+
+        if (currentStep === 2) {
+            const featStrat = document.querySelector('input[name="feat-strat"]:checked').value;
+            if (featStrat === 'pipeline') {
+                if(document.getElementById('feat-target').querySelectorAll('.feat-item').length === 0) {
+                    document.getElementById('err-feat').style.display = 'block'; 
+                    valid = false;
+                } else { document.getElementById('err-feat').style.display = 'none'; }
+            }
+        }
+
+        // --- NEW: Step 3 JSON Syntax Check ---
+        if (currentStep === 3) {
+            const layerInput = document.getElementById('arch-head-layers');
+            const val = layerInput.value.trim();
+            try {
+                // Try to parse it
+                const parsed = JSON.parse(val);
+                // Check if it is an array and contains only numbers
+                if (!Array.isArray(parsed) || !parsed.every(item => typeof item === 'number')) {
+                    throw new Error("Invalid format");
+                }
+                // Valid!
+                layerInput.classList.remove('input-error');
+            } catch (e) {
+                // Invalid!
+                layerInput.classList.add('input-error');
+                alert("Format Error: Head Hidden Layers must be a list of numbers like [128, 64].");
+                valid = false;
+            }
+        }
+        // -------------------------------------
+
+        document.getElementById('val-alert').style.display = valid ? 'none' : 'block';
+        return valid;
+    }
+
+    function toggleModeSettings() {
+        const mode = document.getElementById('op-mode').value;
+        document.getElementById('app-settings').style.display = (mode === 'application') ? 'block' : 'none';
+        document.getElementById('eval-settings').style.display = (mode === 'evaluation') ? 'block' : 'none';
+    }
+
+    function toggleEvalInputs() {
+        const method = document.getElementById('eval-method').value;
+        document.getElementById('eval-single-inputs').style.display = (method === 'single') ? 'block' : 'none';
+        document.getElementById('eval-batch-inputs').style.display = (method === 'batch') ? 'block' : 'none';
+    }
+
+    // --- NEW TASK LOGIC (STEP 1) ---
+    function handleTaskTypeChange() {
+        const mainTask = document.getElementById('task-type').value;
+        const subContainer = document.getElementById('sub-task-container');
+        const subSelect = document.getElementById('sub-task-type');
+        const multitaskSpecifics = document.getElementById('multitask-specifics');
+        const descBox = document.getElementById('task-type-desc');
+
+        // Reset display
+        subContainer.style.display = 'none';
+        multitaskSpecifics.style.display = 'none';
+        subSelect.innerHTML = '';
+        descBox.style.display = 'block';
+
+        if (mainTask === 'regression') {
+            descBox.innerText = "Single continuous value prediction (e.g. LogS, IC50).";
+        } 
+        else if (mainTask === 'classification') {
+            subContainer.style.display = 'block';
+            addOption(subSelect, 'binary', 'Binary Classification');
+            addOption(subSelect, 'multiclass', 'Multi-Class Classification');
+            descBox.innerText = "Single label prediction (Binary or Multi-Class).";
+        }
+        else if (mainTask === 'multilabel') {
+            subContainer.style.display = 'block';
+            addOption(subSelect, 'binary', 'Classification');
+            // Removed regression option as requested
+            descBox.innerText = "Multiple non-exclusive label prediction (e.g. drug-drug interaction type prediction, the predicted label can be one or more from a pool of selected interaction types).";
+        }
+        else if (mainTask === 'multitask') {
+            subContainer.style.display = 'block';
+            addOption(subSelect, 'binary', 'Binary Classification');
+            addOption(subSelect, 'regression', 'Regression');
+            multitaskSpecifics.style.display = 'block';
+            descBox.innerText = "Dedicated head for each task, defined by the number of molecules per sample.";
+        }
+    }
+
+    function addOption(select, value, text) {
+        let opt = document.createElement('option');
+        opt.value = value;
+        opt.text = text;
+        select.appendChild(opt);
+    }
+
+    function toggleFeatUI() {
+        const featStrat = document.querySelector('input[name="feat-strat"]:checked').value;
+        document.getElementById('feat-file-section').style.display = (featStrat === 'precalc') ? 'block' : 'none';
+        document.getElementById('feat-builder-section').style.display = (featStrat === 'precalc') ? 'none' : 'block';
+    }
+
+    function triggerBrowse(inputId) {
+        activePathInputId = inputId;
+        document.getElementById('util-file').click();
+    }
+    
+    // --- NEW: Reusable Path Warning Logic ---
+    function showPathWarning(targetInput) {
+        const parent = targetInput.parentElement;
+        // CORRECTED: Check only the immediate next sibling to avoid finding neighbors' warnings
+        let nextEl = parent.nextElementSibling;
+        if (nextEl && nextEl.classList.contains('path-warning')) {
+            return; // Warning already exists for THIS input
+        }
+        
+        // Create new
+        const warning = document.createElement('div');
+        warning.className = 'path-warning';
+        warning.style.cssText = "color: #e67e22; font-size: 0.85rem; margin-top: 5px; font-weight: 500; display: flex; align-items: center; gap: 5px;";
+        warning.innerHTML = "<span>⚠️</span> <span><strong>Browser Limit:</strong> Filename detected. If this file is in a folder (e.g. <em>data/raw/</em>), please manually type the full path before the filename above.</span>";
+        parent.after(warning);
+    }
+
+    function applyFileName() {
+        const fileInput = document.getElementById('util-file');
+        
+        // Ensure a file was selected and we know which input to update
+        if (fileInput.files.length > 0 && activePathInputId) {
+            const file = fileInput.files[0];
+            const name = file.name;
+            const targetInput = document.getElementById(activePathInputId);
+            
+            // Update Text Input
+            targetInput.value = name;
+            targetInput.classList.remove('input-error');
+            
+            // --- NEW: Add Path Warning ---
+            showPathWarning(targetInput);
+            // -----------------------------
+            
+            // Logic for Step 1 Header Parsing (Keep existing logic)
+            if (activePathInputId === 'app-path-train' || activePathInputId === 'eval-path-train') {
+                const blob = file.slice(0, 20480);
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const text = e.target.result;
+                    const lines = text.split('\n').filter(l => l.trim() !== '');
+                    if(lines.length > 0) {
+                        const headers = lines[0].split(',').map(h => h.trim());
+                        step1Headers = headers;
+
+                        // Generate Preview
+                        const content = document.getElementById('step1-preview-content');
+                        let html = '<table class="preview-table"><thead><tr>';
+                        headers.forEach(h => { html += `<th>${h}</th>`; });
+                        html += '</tr></thead><tbody>';
+                        
+                        for(let i=1; i<Math.min(lines.length, 4); i++) {
+                            html += '<tr>';
+                            const cols = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                            headers.forEach((h, idx) => {
+                                let val = cols[idx] || '';
+                                val = val.trim().replace(/^"|"$/g, '');
+                                html += `<td>${val}</td>`;
+                            });
+                            html += '</tr>';
+                        }
+                        html += '</tbody></table>';
+                        content.innerHTML = html;
+                    }
+                };
+                reader.readAsText(blob);
+            }
+        }
+        fileInput.value = ''; 
+    }
+
+    // Step 2 Batch Reference Upload
+    function handleFileUpload(input, previewId) {
+        const file = input.files[0];
+        if (!file) return;
+        
+        if (input.id === 'csv-upload') {
+            document.getElementById('file-name').innerText = "Selected: " + file.name;
+        }
+        
+        // Safety: Slice 20KB
+        const blob = file.slice(0, 20480);
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const text = e.target.result;
+            const lines = text.split('\n').filter(l => l.trim() !== '');
+            if(lines.length > 0) {
+                const headers = lines[0].split(',').map(h => h.trim());
+                
+                if (headers.length >= 2) {
+                    document.getElementById('col-mol-id').value = headers[0];
+                    document.getElementById('col-label').value = headers[1];
+                }
+
+                if(previewId) {
+                    const container = document.getElementById(previewId);
+                    const content = document.getElementById(previewId + '-content');
+                    container.style.display = 'block';
+                    
+                    let html = '<table class="preview-table"><thead><tr>';
+                    headers.forEach(h => { html += `<th>${h}</th>`; });
+                    html += '</tr></thead><tbody>';
+                    
+                    for(let i=1; i<Math.min(lines.length, 4); i++) {
+                        html += '<tr>';
+                        const cols = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+
+                        headers.forEach((h, idx) => {
+                            let val = cols[idx] || '';
+                            val = val.trim().replace(/^"|"$/g, '');
+                            html += `<td>${val}</td>`;
+                        });
+                        html += '</tr>';
+                    }
+                    html += '</tbody></table>';
+                    content.innerHTML = html;
+                }
+            }
+        };
+        reader.readAsText(blob);
+    }
+
+    function handleDictUpload(input) {
+        const file = input.files[0];
+        if (!file) return;
+        document.getElementById('path-dict').value = file.name;
+        document.getElementById('path-dict').classList.remove('input-error');
+
+        // --- NEW: Add Path Warning for Dictionary ---
+        const targetInput = document.getElementById('path-dict');
+        showPathWarning(targetInput);
+        // --------------------------------------------
+        
+        // Safety: Slice 20KB
+        const blob = file.slice(0, 20480);
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const text = e.target.result;
+            const lines = text.split('\n').filter(l => l.trim() !== '');
+            if(lines.length > 0) {
+                const headers = lines[0].split(',').map(h => h.trim());
+                
+                if(headers.length >= 2) {
+                    document.getElementById('dict-col-id').value = headers[0];
+                    document.getElementById('dict-col-smiles').value = headers[1];
+                }
+
+                const container = document.getElementById('dict-preview');
+                const content = document.getElementById('dict-preview-content');
+                container.style.display = 'block';
+                
+                let html = '<table class="preview-table"><thead><tr>';
+                headers.forEach(h => { html += `<th>${h}</th>`; });
+                html += '</tr></thead><tbody>';
+                
+                for(let i=1; i<Math.min(lines.length, 4); i++) {
+                    html += '<tr>';
+                    const cols = lines[i].split(',');
+                    headers.forEach((h, idx) => { html += `<td>${cols[idx] || ''}</td>`; });
+                    html += '</tr>';
+                }
+                html += '</tbody></table>';
+                content.innerHTML = html;
+            }
+        };
+        reader.readAsText(blob);
+    }
+
+    // --- STEP 4 LOGIC UPDATED ---
+    function checkCurriculumEligibility() {
+        const taskType = document.getElementById('task-type').value;
+        // Parse input as integer for strict comparison
+        const numMols = parseInt(document.getElementById('num-mols-per-sample').value);
+        const optCurriculum = document.getElementById('opt-curriculum');
+        const weightSelect = document.getElementById('weight-strategy');
+        
+        // STRICT LOGIC: Task must be 'multitask' AND 'numMols' must be exactly 2
+        if (taskType === 'multitask' && numMols === 2) {
+            optCurriculum.disabled = false;
+        } else {
+            optCurriculum.disabled = true;
+            if(weightSelect.value === 'curriculum') {
+                weightSelect.value = 'equal';
+            }
+        }
+        toggleWeightSettings();
+    }
+
+    function toggleWeightSettings() {
+        const strategy = document.getElementById('weight-strategy').value;
+        const taskType = document.getElementById('task-type').value;
+        const descBox = document.getElementById('strat-desc');
+        // NOTE: We assume 'Unique Molecule Count' as basis for curriculum text logic now that direct input is removed
+        const term = 'Molecule Count'; 
+        const weightSelect = document.getElementById('weight-strategy');
+
+        // Logic: Custom weights only for Multi-task
+        if(taskType === 'multitask') {
+            weightSelect.options[1].disabled = false;
+        } else {
+            weightSelect.options[1].disabled = true;
+            if (strategy === 'custom') weightSelect.value = 'equal';
+        }
+
+        descBox.className = "strategy-desc"; 
+        
+        document.getElementById('curriculum-ui').style.display = (strategy === 'curriculum') ? 'block' : 'none';
+        document.getElementById('custom-weights-ui').style.display = (strategy === 'custom') ? 'block' : 'none';
+        
+        if (strategy === 'equal') {
+            descBox.innerHTML = "<strong>Strategy: Equal Weight</strong><br>All tasks contribute equally (1.0) to the total loss.";
+        } else if (strategy === 'custom') {
+            descBox.innerHTML = "<strong>Strategy: Custom Weights</strong><br>Manually assign importance weights to specific tasks based on their label values.";
+            renderCustomWeights(term);
+        } else if (strategy === 'curriculum') {
+            descBox.innerHTML = `
+                <strong>Three-Stage Curriculum Transfer Learning:</strong><br>
+                This mode optimizes for 2-task scenarios (a large "Complementary" dataset and a small "Primary" dataset).<br>
+                1. <strong>Warm Up:</strong> Trained ONLY on the Complementary task.<br>
+                2. <strong>Transfer:</strong> Trained on BOTH tasks (weights shift from Complementary to Primary).<br>
+                3. <strong>Fine Tune:</strong> Trained ONLY on the Primary task.
+            `;
+            const mappingDesc = document.getElementById('mapping-desc');
+            mappingDesc.innerText = "Please specify the molecule count from your data representing each task.";
+                
+            document.getElementById('lbl-task-primary').innerText = "Primary " + term;
+            document.getElementById('lbl-task-complementary').innerText = "Complementary " + term;
+            updateSliderLabels();
+        }
+    }
+
+    function renderCustomWeights(term) {
+        // Use the 'Unique Number of Molecules' value to infer number of tasks for custom weighting if basis is implicit
+        const count = parseInt(document.getElementById('num-mols-per-sample').value) || 2; 
+        
+        const container = document.getElementById('custom-weights-container');
+        document.getElementById('lbl-custom-weight-title').innerText = "Define Weights per Task (" + term + ")";
+        container.innerHTML = '';
+        
+        for(let i=1; i<=count; i++) {
+            const div = document.createElement('div');
+            div.innerHTML = `
+                <div style="background:white; padding:10px; border:1px solid #ddd; border-radius:4px;">
+                    <strong style="display:block; margin-bottom:5px; color:#555;">Task ${i}</strong>
+                    <div style="margin-bottom:5px;">
+                        <label style="font-size:0.75rem;">${term}</label>
+                        <input type="text" class="task-label-input required-field" placeholder="Provide your input" style="padding:5px; font-size:0.9rem; margin:0; width:100%;">
+                    </div>
+                    <div>
+                        <label style="font-size:0.75rem;">Weight</label>
+                        <input type="number" class="task-weight-input required-field" step="0.1" value="1.0" style="padding:5px; font-size:0.9rem; margin:0; width:100%;">
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+        }
+    }
+
+    function updateSliderLabels() {
+        const val = parseInt(document.getElementById('stage2-slider').value);
+        const pri = val;
+        const sec = 100 - val;
+        document.getElementById('txt-pri').innerText = pri;
+        document.getElementById('txt-sec').innerText = sec;
+    }
+
+    // --- STEP 5 LOGIC UPDATED ---
+    function configureStep5() {
+        const task = document.getElementById('task-type').value;
+        const subTask = document.getElementById('sub-task-type').value;
+        const lossSel = document.getElementById('loss-function');
+        lossSel.innerHTML = '';
+        
+        let lossName = "";
+        
+        if (task === 'regression') {
+            lossName = "Mean Squared Error (MSE)";
+        } else if (task === 'classification') {
+            if (subTask === 'binary') lossName = "Binary Cross Entropy (BCE)";
+            else lossName = "Cross Entropy (Softmax)";
+        } else if (task === 'multilabel') {
+            if (subTask === 'binary') lossName = "Binary Cross Entropy (BCE)";
+            else lossName = "Mean Squared Error (MSE)";
+        } else if (task === 'multitask') {
+            if (subTask === 'binary') lossName = "Binary Cross Entropy (BCE)";
+            else lossName = "Mean Squared Error (MSE)";
+        }
+
+        let opt = document.createElement('option');
+        opt.text = lossName;
+        lossSel.appendChild(opt);
+
+        const strategy = document.getElementById('weight-strategy').value;
+        const isCurriculum = (strategy === 'curriculum');
+        document.getElementById('standard-train-settings').style.display = isCurriculum ? 'none' : 'block';
+        document.getElementById('curriculum-train-settings').style.display = isCurriculum ? 'block' : 'none';
+    }
+
+    function checkAttnEligibility() {
+        const mode = document.getElementById('op-mode').value;
+        const sel = document.getElementById('arch-attn-interp');
+        if (mode === 'evaluation') {
+            sel.value = "false";
+            sel.disabled = true;
+            document.getElementById('attn-hint').innerText = "Disabled in Evaluation mode.";
+        } else {
+            sel.disabled = false;
+            document.getElementById('attn-hint').innerText = "Only available in Application mode.";
+        }
+    }
+
+    function generateJSON() {
+        try {
+            const mode = document.getElementById('op-mode').value;
+            const taskType = document.getElementById('task-type').value;
+            const subTaskType = document.getElementById('sub-task-type').value;
+            const strategy = document.getElementById('weight-strategy').value;
+            
+            const featStrat = document.querySelector('input[name="feat-strat"]:checked').value;
+            let featData = null;
+            if (featStrat === 'precalc') {
+                featData = { source: "precomputed_file", path: document.getElementById('path-feat-file').value };
+            } else {
+                const featItems = document.getElementById('feat-target').querySelectorAll('.feat-item');
+                let selectedFeats = [];
+                featItems.forEach(item => selectedFeats.push(item.innerText));
+                featData = { source: "pipeline_builder", methods: selectedFeats };
+            }
+
+            let appConfig = null;
+            let evalConfig = null;
+
+            if (mode === 'application') {
+                appConfig = {
+                    train_path: document.getElementById('app-path-train').value,
+                    test_path: document.getElementById('app-path-test').value
+                };
+            } else {
+                const evalMethod = document.getElementById('eval-method').value;
+                if (evalMethod === 'single') {
+                    evalConfig = { method: 'single', train_path: document.getElementById('eval-path-train').value, test_path: document.getElementById('eval-path-test').value };
+                } else {
+                    evalConfig = { method: 'batch', folder_path: document.getElementById('path-folder').value, syntax_train: document.getElementById('batch-syntax-train').value, syntax_test: document.getElementById('batch-syntax-test').value };
+                }
+            }
+
+            const dictId = document.getElementById('dict-col-id') ? document.getElementById('dict-col-id').value : "";
+            const dictSmiles = document.getElementById('dict-col-smiles') ? document.getElementById('dict-col-smiles').value : "";
+            const dictPath = document.getElementById('path-dict') ? document.getElementById('path-dict').value : "";
+
+            // Removed cardinality_basis input retrieval, assume default for multi-task
+            let output = {
+                project_name: document.getElementById('project-name').value,
+                mode: mode,
+                app_config: appConfig,
+                eval_config: evalConfig,
+                task: {
+                    type: taskType,
+                    sub_type: subTaskType || null,
+                },
+                data: {
+                    mol_col: document.getElementById('col-mol-id').value,
+                    label_col: document.getElementById('col-label').value,
+                    dictionary_path: dictPath,
+                    dictionary_cols: { id: dictId, smiles: dictSmiles },
+                    featurization: featData
+                },
+                model_architecture: {
+                    model_dim: parseInt(document.getElementById('arch-dim').value),
+                    nhead: parseInt(document.getElementById('arch-heads').value),
+                    num_attention_blocks: parseInt(document.getElementById('arch-sab').value),
+                    num_integrators: parseInt(document.getElementById('arch-seeds').value),
+                    dropouts: {
+                        input: parseFloat(document.getElementById('arch-dr-in').value),
+                        transformer: parseFloat(document.getElementById('arch-dr-trans').value),
+                        head: parseFloat(document.getElementById('arch-dr-head').value)
+                    },
+                    head_hidden_layers: JSON.parse(document.getElementById('arch-head-layers').value),
+                    random_seed: parseInt(document.getElementById('arch-rand-seed').value),
+                    mc_dropout_iter: parseInt(document.getElementById('arch-mc-iter').value),
+                    attention_score_export: document.getElementById('arch-attn-interp').value === 'true'
+                },
+                training: {
+                    optimizer: 'adam',
+                    loss: document.getElementById('loss-function').options[0].text
+                }
+            };
+            
+            // Add Multi-task specific config
+            if (taskType === 'multitask') {
+                let numMols = parseInt(document.getElementById('num-mols-per-sample').value);
+                // Handle NaN if hidden/empty
+                if (isNaN(numMols)) {
+                    numMols = null; 
+                }
+
+                output.task.multitask_config = {
+                    num_unique_molecules: numMols,
+                    basis: "unique_mol_count" // Fixed assumption based on removal of inputs
+                };
+            }
+
+            if (strategy === 'curriculum') {
+                output.training.strategy = "curriculum_learning";
+                const sliderVal = parseInt(document.getElementById('stage2-slider').value);
+                output.training.curriculum_config = {
+                    task_mapping: {
+                        primary: document.getElementById('val-primary').value,
+                        complementary: document.getElementById('val-complementary').value
+                    },
+                    stages: {
+                        warm_up: { epochs: parseInt(document.getElementById('ep-s1').value), batch_size: parseInt(document.getElementById('bs-s1').value), lr: parseFloat(document.getElementById('lr-s1').value) },
+                        transfer: { 
+                            epochs: parseInt(document.getElementById('ep-s2').value),
+                            batch_size: { primary: parseInt(document.getElementById('bs-s2-pri').value), complementary: parseInt(document.getElementById('bs-s2-sec').value) },
+                            lr: parseFloat(document.getElementById('lr-s2').value),
+                            balance: { complementary: (100-sliderVal)/100, primary: sliderVal/100 }
+                        },
+                        fine_tune: { epochs: parseInt(document.getElementById('ep-s3').value), batch_size: parseInt(document.getElementById('bs-s3').value), lr: parseFloat(document.getElementById('lr-s3').value) }
+                    }
+                };
+            } else if (strategy === 'custom') {
+                output.training.strategy = "custom_weights";
+                let weights = [];
+                const labels = document.querySelectorAll('.task-label-input');
+                const vals = document.querySelectorAll('.task-weight-input');
+                for(let i=0; i<labels.length; i++) {
+                    weights.push({ task_id: i+1, label_value: labels[i].value, weight: parseFloat(vals[i].value) });
+                }
+                output.training.custom_weights = weights;
+                output.training.batch_size = parseInt(document.getElementById('batch-global').value);
+                output.training.epochs = parseInt(document.getElementById('epochs-global').value);
+                output.training.learning_rate = parseFloat(document.getElementById('lr-global').value);
+            } else {
+                output.training.strategy = "standard";
+                output.training.batch_size = parseInt(document.getElementById('batch-global').value);
+                output.training.epochs = parseInt(document.getElementById('epochs-global').value);
+                output.training.learning_rate = parseFloat(document.getElementById('lr-global').value);
+            }
+
+            document.getElementById('json-output').innerHTML = syntaxHighlight(output);
+        } catch(e) {
+            console.error(e);
+            document.getElementById('json-output').innerText = "Error generating JSON: " + e.message;
+        }
+    }
+
+    function syntaxHighlight(json) {
+        if (typeof json != 'string') {
+             json = JSON.stringify(json, null, 4);
+        }
+        json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+            var cls = 'number';
+            if (/^"/.test(match)) {
+                if (/:$/.test(match)) {
+                    cls = 'key';
+                } else {
+                    cls = 'string';
+                }
+            } else if (/true|false/.test(match)) {
+                cls = 'boolean';
+            } else if (/null/.test(match)) {
+                cls = 'null';
+            }
+            return '<span class="' + cls + '">' + match + '</span>';
+        });
+    }
+
+    function copyJSON() {
+        const text = document.getElementById('json-output').innerText;
+        navigator.clipboard.writeText(text).then(() => alert("JSON copied to clipboard!"));
+    }
+    function downloadJSON() {
+        const text = document.getElementById('json-output').innerText;
+        const blob = new Blob([text], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = document.getElementById('project-name').value + "_config.json";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+</script>
+</body>
+</html>
