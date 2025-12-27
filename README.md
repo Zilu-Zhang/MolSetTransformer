@@ -142,7 +142,7 @@ c1ccccc1;CCN(CC)CC,1.23
 
 For ID-to-SMILES mapping: 
 ```csv
-id,smiles
+Molecule_ID,SMILES
 Mol_001,CCO
 Mol_002,c1ccccc1
 ```
