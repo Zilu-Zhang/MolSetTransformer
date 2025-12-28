@@ -63,20 +63,10 @@ pip install chemprop         # CheMeleon embeddings
 
 Conda gives a reproducible environment and installs RDKit easily.
 
-1) CPU-only environment:
-
-```bash
-# from the repo root (where env_cpu.yml is located)
-conda env create -f env_cpu.yml
-conda activate molsettransformer
-```
-
-2) GPU environment (NVIDIA GPU; example using CUDA 11.8):
-
 ```bash
 # from the repo root (where env_cuda.yml is located)
-conda env create -f env_cuda.yml
-conda activate molsettransformer-gpu
+conda env create -f env.yml
+conda activate molsettrans
 ```
 
 Notes:
