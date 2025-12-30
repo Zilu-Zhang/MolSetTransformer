@@ -172,7 +172,7 @@ class InferenceEngine:
             final_df = pred_df
 
         out_csv = self.predictions_dir / f"{task_id}_predictions.csv"
-        final_df.to_csv(out_csv)
+        final_df.to_csv(out_csv, index=False)
         logging.info(f"Saved merged predictions to {out_csv}")
 
         # --- Export Attention ---
