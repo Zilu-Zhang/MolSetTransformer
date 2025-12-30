@@ -65,7 +65,7 @@ Conda gives a reproducible environment and installs RDKit easily.
 
 ```bash
 # from the repo root (where env_cuda.yml is located)
-conda env create -f env.yml
+conda env create -f environment.yml
 conda activate molsettrans
 ```
 
