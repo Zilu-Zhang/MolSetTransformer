@@ -6,7 +6,7 @@ TrainEngine Module
 Manages the model training lifecycle, supporting:
 1. Standard Training (Single-task & Uniform Multi-task)
 2. Curriculum Learning (Staged training with primary/complementary tasks)
-3. Custom Loss weighting
+3. Dynamic Loss Weighting for Imbalanced Data
 
 Handles device management, optimizer configuration, and check-pointing.
 """
@@ -36,7 +36,9 @@ class TrainEngine:
         model.to(self.device)
         strategy = self.config.get('strategy', 'standard')
         
-        criterion = self._get_loss_function()
+        # Calculate loss function (injecting train loader for dynamic weight calculation)
+        criterion = self._get_loss_function(loaders.get('train'))
+        
         logging.info(f"Training Strategy: {strategy}")
         logging.info(f"Loss Function: {criterion.__class__.__name__}")
 
@@ -50,20 +52,74 @@ class TrainEngine:
         logging.info(f"Training Complete. Model saved to {final_path}")
         return final_path
 
-    def _get_loss_function(self):
-        """Determines the appropriate loss function based on task type."""
+    def _calculate_pos_weights(self, loader):
+        """
+        Scans the data loader to calculate class imbalance weights.
+        
+        Formula: weight_class_i = number_of_negatives_i / number_of_positives_i
+        
+        This ensures that the loss function penalizes missing a rare positive class 
+        significantly more than missing a common negative class.
+        """
+        logging.info("  > Scanning dataset to calculate pos_weight for imbalance correction...")
+        total_pos = None
+        total_count = 0
+        
+        # Iterate purely to count, no gradient needed.
+        # Calculations are performed on CPU to preserve GPU memory.
+        with torch.no_grad():
+            for batch in loader:
+                # 'labels' comes from the collate_fn (Batch, Num_Classes)
+                labels = batch['labels'] 
+                
+                if total_pos is None:
+                    total_pos = torch.zeros(labels.shape[1])
+                
+                total_pos += labels.float().cpu().sum(dim=0)
+                total_count += labels.size(0)
+            
+        if total_count == 0:
+            logging.warning("  > Dataset empty. Skipping weight calculation.")
+            return None
+
+        # Calculate Negatives
+        num_neg = total_count - total_pos
+        
+        # Calculate Weights: neg/pos (add epsilon to avoid divide by zero)
+        # Example: 99 negs, 1 pos -> weight = 99.
+        pos_weights = num_neg / (total_pos + 1e-6)
+        
+        logging.info(f"  > Class weights calculated. Min: {pos_weights.min():.2f}, Max: {pos_weights.max():.2f}")
+        
+        return pos_weights.to(self.device)
+
+    def _get_loss_function(self, loader=None):
+        """
+        Determines the appropriate loss function based on task type.
+        
+        Args:
+            loader: Optional DataLoader. Used to calculate dynamic weights for 
+                    imbalanced multi-label datasets.
+        """
         t_type = self.task_config.get('type')
         sub_type = self.task_config.get('sub_type')
         
         if t_type == 'regression':
             return nn.MSELoss()
+            
         elif t_type == 'classification':
             if sub_type == 'multiclass':
                 return nn.CrossEntropyLoss()
             else:
                 return nn.BCEWithLogitsLoss()
+                
         elif t_type == 'multilabel':
-            return nn.BCEWithLogitsLoss()
+            # Calculate weights if a loader is provided
+            weights = None
+            if loader is not None:
+                weights = self._calculate_pos_weights(loader)
+            return nn.BCEWithLogitsLoss(pos_weight=weights)
+            
         elif t_type == 'multitask':
             if sub_type == 'regression':
                 return nn.MSELoss()
