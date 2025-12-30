@@ -87,6 +87,11 @@ class DataManager:
 
     def _merge_duplicate_inputs(self, df: pd.DataFrame, mol_col: str, label_col: str, sep: str = ';') -> pd.DataFrame:
         logging.info("Scanning for duplicate inputs to merge (Multi-Label Strategy)...")
+        df = df.copy()
+        df[mol_col] = df[mol_col].map(
+            lambda x: sep.join(sorted([p.strip() for p in str(x).split(sep) if p.strip()]))
+        )
+        
         def merge_labels(series):
             unique_labels = set()
             for item in series:
